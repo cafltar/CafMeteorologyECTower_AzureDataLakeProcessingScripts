@@ -12,7 +12,7 @@ Many of the included scripts require input parameters to run. Because some of th
 
 ## Documents
 
-### DataLakeDownloadTemplate
+### DataLakeDownload_TEMPLATE.xlsx
 
 - Contains the options, access values, and input/output filepaths for both a local machine and the Azure Datalake
 - Is an Excel sheet with 5 workbooks, one for each site plus and explainer for the different rows and columns within each.
