@@ -73,12 +73,14 @@ def Fast_Read(filenames, hdr, idxfll):
         Out = Out.sort_index()
     return Out # Return dataframe to main function.    
 
-def Data_Update_Azure(access, s,col):
+def Data_Update_Azure(access, s,col, siteName):
     # Import libraries needed to connect and credential to the data lake.
     from azure.storage.filedatalake import DataLakeServiceClient
     from azure.identity import ClientSecretCredential
     import datetime
     from datetime import date
+    import pathlib
+
     # Pulls today's data from the computer and uses as the end date.
     e =  date.today()
     # Pull the access information from the driver Excel workbook for the datalake in question
@@ -88,6 +90,10 @@ def Data_Update_Azure(access, s,col):
     client_secret = access[col]['CLIENTSECRET']
     path = access[col]['path']
     localfile = access[col]['LOCAL_DIRECT']
+    if pd.isnull(localfile):
+        localfile = pathlib.Path(access[col]["inputPath"]) / siteName
+        localfile.mkdir(parents=True, exist_ok=True)
+    
     file_system = access[col]['file_system']
     back = access[col]['back']
     # Credential to the client and build the token
@@ -141,7 +147,7 @@ def Data_Update_Azure(access, s,col):
                     bd = datetime.date(int(Y), int(M), int(D))                    
                     if (bd >= s)& (bd<=e):
                 # If dates are within the correct range, downloads the file to the local directory
-                        local_file = open(localfile+z[back:],'wb'); print(local_file)                
+                        local_file = open(localfile / z.split('/')[-1],'wb'); print(local_file)                
                         file_client = file_system_client.get_file_client(z)
                         download = file_client.download_file()
                         downloaded_bytes = download.readall()
@@ -160,26 +166,34 @@ def wateryear():
         wateryear = str(int(str(date.today()).replace('-','')[0:4])+1)
     return wateryear # Returns water year as a string.
     
-def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True):
+def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True,startDate=None):
     # Main driver function of the datalake access and QC functions, called from the main driver of the codeset.
     import glob
     import datetime
     import pandas as pd
     from datetime import date
+    from dateutil import parser
     # Collect which column, met or flux
     ver = access[col]['Ver']
     cy = wateryear() # Determine wateryear to build file path
-    CE = Fast_Read(glob.glob(CEF),1, Time) # Read in the previous aggregated file(s)
-    s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
-    if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
-        s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
-    else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
+    if startDate is None:
+        CE = Fast_Read(glob.glob(CEF),1, Time) # Read in the previous aggregated file(s)
+        s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
+        if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
+            s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
+        else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
+    else: s = parser.parse(startDate).date()
+    
     print('Downloading files')
-    Data_Update_Azure(access, s, col) # Call function to update the Azure data
+    Data_Update_Azure(access, s, col, Sites) # Call function to update the Azure data
     print('Reading '+ Sites)
-    filenames = glob.glob(access[col]['LOCAL_DIRECT']+'\\*.dat') # Gather all the filenames just downloaded
+    if not pd.isna(access[col]['LOCAL_DIRECT']):
+        filenames = glob.glob(access[col]['LOCAL_DIRECT']+'\\*.dat') # Gather all the filenames just downloaded
+    else: filenames = glob.glob(access[col]["inputPath"] + '\\' + Sites + '\\*.dat')
     CEN = Fast_Read(filenames, 4,Time) # Read in new files
-    CE=pd.concat([CE,CEN], sort = False) # Concat new files the main aggregated file
+    if 'CE' in locals():
+        CE=pd.concat([CE,CEN], sort = False) # Concat new files the main aggregated file
+    else: CE = CEN
     CE = CE.sort_index() # Sort index
     CE = CE.dropna(subset=['RECORD']) # Drop any row that has a NaN/blank in the "RECORD" number column; removes the overlap-extra rows added from the previous run
     CE = indx_fill(CE,Time) # Fill back in the index through to the end of the current day
@@ -195,12 +209,15 @@ def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True):
             CE = METQC(CE, col) # Calls met QC function; flux data includes met data hence extra call.
     if save == True:
         print('Saving Data') 
-        CEF = CEF[:-4]+tag; CEF=CEF.replace('*','') # Replace something in a string; don't remember why.
+        CEF = (CEF[:-4]+tag).replace('*','') # replace wildcards that were used for glob
+        
         CE.to_csv(CEF, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
         fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today # Build filename for uploaded file based on tyrannical data manager's specifications
         print('Uploading data')
-        AggregatedUploadAzure(fname, CE, access, col,CEF,cy) # Send info to upload function
+        
+        # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
+        #AggregatedUploadAzure(fname, CE, access, col,CEF,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
