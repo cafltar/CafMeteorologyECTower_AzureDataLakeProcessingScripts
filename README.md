@@ -43,3 +43,13 @@ Code to access and download the EC tower data from the Azure data lake. The acce
 # Features still to add:
 - Meteorology plot report generation akin to the flux tower report generation
 - Add further QC options to flux data (despike; localized QC for sensor removals) if warranted
+
+# Acknowledgements
+
+Original code was written by Dr. Eric Russell ([esrussell16](https://github.com/esrussell16))
+
+# License
+
+As a work of the United States government, this project is in the public domain within the United States.
+
+Additionally, we waive copyright and related rights in the work worldwide through the CC0 1.0 Universal public domain dedication.
