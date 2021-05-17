@@ -54,13 +54,16 @@ for k in range (0,len(Sites)):
     # I haven't sorted out a "first" pass without a start file to be used. 
     colT = col + '_V'+S_V[k]
     #CEF = 'C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\'+Sites[k]+'*_'+colT+'*.csv' 
-    globString = Sites[k]+'*_'+colT+'*.csv'
+    #globString = Sites[k]+'*_'+colT+'*.csv'
+
+    # {Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
+    globString = Sites[k]+'_'+col+'_AggregateQC_CY*'+'_V'+S_V[k]+'*.csv'
     CEF = str(outputPath / globString)
 
     # Calls the function that access the Azure data lake using the options given in the first section. 
     # Can add the save and date options if want them to be different than the default
-    #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True)
-    df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True, startDate="2021-01-27")
+    df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True)
+    #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True, startDate="2021-01-27")
 #if col =='Flux':
 #    TRP.TowerReport()
 # if col == 'Met':

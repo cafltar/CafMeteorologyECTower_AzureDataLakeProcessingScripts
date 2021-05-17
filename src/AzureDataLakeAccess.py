@@ -211,9 +211,12 @@ def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True,startDate=N
         print('Saving Data') 
         CEF = (CEF[:-4]+tag).replace('*','') # replace wildcards that were used for glob
         
-        CE.to_csv(CEF, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
         fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today # Build filename for uploaded file based on tyrannical data manager's specifications
+        fpath = access[col]["outputPath"] + '\\' + fname + '.csv'
+        
+        CE.to_csv(fpath, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
+
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
