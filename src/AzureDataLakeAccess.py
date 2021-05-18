@@ -166,7 +166,7 @@ def wateryear():
         wateryear = str(int(str(date.today()).replace('-','')[0:4])+1)
     return wateryear # Returns water year as a string.
     
-def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True,startDate=None):
+def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None):
     # Main driver function of the datalake access and QC functions, called from the main driver of the codeset.
     import glob
     import datetime
@@ -209,7 +209,7 @@ def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True,startDate=N
             CE = METQC(CE, col) # Calls met QC function; flux data includes met data hence extra call.
     if save == True:
         print('Saving Data') 
-        CEF = (CEF[:-4]+tag).replace('*','') # replace wildcards that were used for glob
+        #CEF = (CEF[:-4]+tag).replace('*','') # replace wildcards that were used for glob
         
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
         fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today+'.csv' # Build filename for uploaded file based on tyrannical data manager's specifications
@@ -220,7 +220,7 @@ def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True,startDate=N
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        #AggregatedUploadAzure(fname, CE, access, col,CEF,cy) # Send info to upload function
+        AggregatedUploadAzure(fname, CE, access, col,fpath,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
@@ -241,7 +241,7 @@ def AggregatedUploadAzure(fname, file_content, access, col, CEF, cy):
     service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format("https", storage_account_name), credential=credential)
     # Builds file path based on cropyear (water year) and upload directory
     file_system_client = service_client.get_file_system_client(upload_dir+cy+'/')
-    file_client = file_system_client.get_file_client(fname+'.csv') # Build filename for the upload
+    file_client = file_system_client.get_file_client(fname) # Build filename for the upload
     file_client.create_file() # Creates the file in the datalake through the file client
     local_file = open(CEF,'r') # Opens the local copy of the aggregated file 
     file_contents = local_file.read() # Read local file copy

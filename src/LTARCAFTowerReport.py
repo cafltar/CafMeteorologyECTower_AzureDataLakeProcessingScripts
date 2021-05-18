@@ -15,14 +15,14 @@ import pathlib
 # Change only these things; are the controls to the script that are not within the set-up excel file
 Time = '30T' # Timestamp of the datafile
 col = 'Flux' # Column for the different paths between Flux or Met
-tag = '_AGCY2021Update.csv' # End tag of the file to be saved; added to the end of CEF varaible below
+#tag = '_AGCY2021Update.csv' # End tag of the file to be saved; added to the end of CEF varaible below
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
 #Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
 #S_V = ['40826','40826','18329','18329']
 
-Sites = ['CookEast']
-S_V = ['40826']
+Sites = ['CookEast', 'CookWest']
+S_V = ['40826', '40826']
 
 # Get path to config file, assume cwd is at root project level
 cwd = pathlib.Path.cwd()
@@ -62,7 +62,7 @@ for k in range (0,len(Sites)):
 
     # Calls the function that access the Azure data lake using the options given in the first section. 
     # Can add the save and date options if want them to be different than the default
-    df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True)
+    df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
     #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True, startDate="2021-01-27")
 #if col =='Flux':
 #    TRP.TowerReport()
