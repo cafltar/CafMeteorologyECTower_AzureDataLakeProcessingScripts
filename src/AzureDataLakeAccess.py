@@ -212,8 +212,8 @@ def AccessAzure(Sites, col, Time,access,CEF,tag,save=True, QC = True,startDate=N
         CEF = (CEF[:-4]+tag).replace('*','') # replace wildcards that were used for glob
         
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
-        fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today # Build filename for uploaded file based on tyrannical data manager's specifications
-        fpath = access[col]["outputPath"] + '\\' + fname + '.csv'
+        fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today+'.csv' # Build filename for uploaded file based on tyrannical data manager's specifications
+        fpath = access[col]["outputPath"] + '\\' + Sites + '\\' + fname
         
         CE.to_csv(fpath, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
 

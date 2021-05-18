@@ -56,8 +56,8 @@ for k in range (0,len(Sites)):
     #CEF = 'C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\'+Sites[k]+'*_'+colT+'*.csv' 
     #globString = Sites[k]+'*_'+colT+'*.csv'
 
-    # {Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
-    globString = Sites[k]+'_'+col+'_AggregateQC_CY*'+'_V'+S_V[k]+'*.csv'
+    # {Site}\{Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
+    globString = Sites[k] + "\\" + Sites[k]+'_'+col+'_AggregateQC_CY*'+'_V'+S_V[k]+'*.csv'
     CEF = str(outputPath / globString)
 
     # Calls the function that access the Azure data lake using the options given in the first section. 
