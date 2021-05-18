@@ -220,13 +220,13 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        AggregatedUploadAzure(fname, CE, access, col,fpath,cy) # Send info to upload function
+        AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
     del CEN; del CE; return df # Delete variables for clean rerun as needed
 
-def AggregatedUploadAzure(fname, file_content, access, col, CEF, cy):
+def AggregatedUploadAzure(fname, access, col, CEF, cy):
     # Upload the aggregated file to the datalake
     from azure.storage.filedatalake import DataLakeServiceClient
     from azure.identity import ClientSecretCredential
