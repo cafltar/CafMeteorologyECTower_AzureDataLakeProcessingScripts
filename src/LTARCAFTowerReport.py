@@ -24,7 +24,7 @@ DataTables = [flux, met]
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
 Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
-S_V = ['40826','40826','18329','18329']
+#S_V = ['40826','40826','18329','18329']
 
 #Sites = ['BoydNorth', 'BoydSouth']
 #S_V = ['18329','18329']
@@ -62,12 +62,12 @@ for dataTable in DataTables:
 
         # Directory should be where the base file starts. There needs to be some start file even if it is blank with the date of the start point; 
         # I haven't sorted out a "first" pass without a start file to be used. 
-        colT = col + '_V'+S_V[k]
+        colT = col + '_' + access[col]['Ver']
         #CEF = 'C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\'+Sites[k]+'*_'+colT+'*.csv' 
         #globString = Sites[k]+'*_'+colT+'*.csv'
 
         # {Site}\{Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
-        globString = Sites[k] + "\\" + Sites[k]+'_'+col+'_AggregateQC_CY*'+'_V'+S_V[k]+'*.csv'
+        globString = Sites[k] + "\\" + Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
         CEF = str(outputPath / globString)
 
         # Calls the function that access the Azure data lake using the options given in the first section. 
