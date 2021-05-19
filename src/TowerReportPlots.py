@@ -10,21 +10,21 @@ import matplotlib.pyplot as plt
 import datetime
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
-os.chdir(r'C:\Users\russe\Documents\GitHub\AzureECTowerAccess')       
+#os.chdir(r'C:\Users\russe\Documents\GitHub\AzureECTowerAccess')       
 import AzureDataLakeAccess as ADLA
 #%%
-def TowerReport():
+def TowerReport(pathToAggregatedFiles):
     print('Reading Cook East') # Need to redo for the right local file
-    filenames = glob.glob('C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\CookEast*Flux*.csv')
+    filenames = glob.glob(pathToAggregatedFiles + '\\CookEast\\CookEast*Flux*.csv')
     CE = ADLA.Fast_Read(filenames, 1, '30T')
     print('Reading Cook West')
-    filenames = glob.glob('C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\CookWest*Flux*.csv')
+    filenames = glob.glob(pathToAggregatedFiles + '\\CookWest\\CookWest*Flux*.csv')
     CW = ADLA.Fast_Read(filenames, 1, '30T')
     print('Reading Boyd North')
-    filenames = glob.glob('C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\BoydNorth*Flux*.csv')
+    filenames = glob.glob(pathToAggregatedFiles + '\\BoydNorth\\BoydNorth*Flux*.csv')
     BN = ADLA.Fast_Read(filenames, 1, '30T')
     print('Reading Boyd South')
-    filenames = glob.glob('C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\BoydSouth*Flux*.csv')
+    filenames = glob.glob(pathToAggregatedFiles + '\\BoydSouth\\BoydSouth*Flux*.csv')
     BS = ADLA.Fast_Read(filenames,1, '30T')
 
     print('Making Plots')
