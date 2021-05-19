@@ -67,8 +67,9 @@ for dataTable in DataTables:
         #globString = Sites[k]+'*_'+colT+'*.csv'
 
         # {Site}\{Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
-        globString = Sites[k] + "\\" + Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
-        CEF = str(outputPath / globString)
+        globString = Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
+        #globString = Sites[k] + "\\" + Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
+        CEF = str(outputPath / Sites[k] / globString)
 
         # Calls the function that access the Azure data lake using the options given in the first section. 
         # Can add the save and date options if want them to be different than the default
