@@ -9,7 +9,7 @@ import pandas as pd
 # Change to directory that houses the the AzureDataLakeAccess library
 #os.chdir(r'C:\Users\russe\Documents\GitHub\AzureECTowerAccess')       
 import AzureDataLakeAccess as ADLA
-#import TowerReportPlots as TRP
+import TowerReportPlots as TRP
 import pathlib
 
 # Change only these things; are the controls to the script that are not within the set-up excel file
@@ -26,8 +26,8 @@ save = True # If want to save the aggregated file or not; default is True
 #Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
 #S_V = ['40826','40826','18329','18329']
 
-Sites = ['CookEast', 'CookWest']
-S_V = ['40826', '40826']
+Sites = ['BoydNorth', 'BoydSouth']
+S_V = ['18329','18329']
 
 # Get path to config file, assume cwd is at root project level
 cwd = pathlib.Path.cwd()
@@ -74,7 +74,9 @@ for dataTable in DataTables:
         # Can add the save and date options if want them to be different than the default
         df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
         #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True, startDate="2021-01-27")
-#if col =='Flux':
-#    TRP.TowerReport()
-# if col == 'Met':
-    # TRP.MetTowerReport()
+
+    if col =='Flux':
+        TRP.TowerReport(str(outputPath))
+#    if col == 'Met':
+#        TRP.MetTowerReport(str(outputPath))
+
