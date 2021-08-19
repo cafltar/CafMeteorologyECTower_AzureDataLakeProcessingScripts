@@ -179,9 +179,10 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     if startDate is None:
         CE = Fast_Read(glob.glob(CEF),1, Time) # Read in the previous aggregated file(s)
         s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
+        s_test = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
         if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
             s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
-        else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
+        else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
     else: s = parser.parse(startDate).date()
     
     print('Downloading files')
@@ -194,9 +195,9 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     if 'CE' in locals():
         CE=pd.concat([CE,CEN], sort = False) # Concat new files the main aggregated file
     else: CE = CEN
-    CE = CE.sort_index() # Sort index
+    CE = CE.sort_index() # Sort index)
     CE = CE.dropna(subset=['RECORD']) # Drop any row that has a NaN/blank in the "RECORD" number column; removes the overlap-extra rows added from the previous run
-    CE = indx_fill(CE,Time) # Fill back in the index through to the end of the current day
+    CE = indx_fill(CE,Time) # Fill back in the index through to the end of the current day. Also removes duplicated values and inserts missing values.
     # CEFClean = CEF[:-4]+'NO_QC'+tag; CEFClean=CEFClean.replace('*','') # Replace something in a string; don't remember why.
     # CE.to_csv(CEFClean, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
     if QC: # Boolean for QCing data
@@ -220,7 +221,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
+        #AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
