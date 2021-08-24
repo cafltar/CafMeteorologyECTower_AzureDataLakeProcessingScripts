@@ -42,7 +42,7 @@ def indx_fill(df, frq):
     df = df.reindex(idx, fill_value=np.NaN)
     return df
 
-def Fast_Read(filenames, hdr, idxfll):
+def Fast_Read(filenames, hdr, idxfll, specified_dtypes = None):
     #Check to make sure there are files within the directory and doesn't error
     if len(filenames) == 0:
         print('No Files in directory, check the path name.')
@@ -52,7 +52,11 @@ def Fast_Read(filenames, hdr, idxfll):
         Final = [];Final = pd.DataFrame(Final)
         for k in range (0,len(filenames)):
             #Read in data and concat to one dataframe; no processing until data all read in
-            df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],low_memory=False)
+            if specified_dtypes:
+                df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],na_values='NAN',dtype=specified_dtypes)
+            else:
+                df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],na_values='NAN',low_memory=False)
+
             Final = pd.concat([Final,df], sort = False)
         # Fill missing index with blank values
         Out = indx_fill(Final, idxfll)
@@ -65,13 +69,89 @@ def Fast_Read(filenames, hdr, idxfll):
         Final = [];Final = pd.DataFrame(Final)
         for k in range (0,len(filenames)):
             #Read in data and concat to one dataframe; no processing until data all read in
-            df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 0,low_memory=False)
+            if specified_dtypes:
+                df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 0,dtype=specified_dtypes)
+            else:
+                df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 0,low_memory=False)
+
             Final = pd.concat([Final,df], sort = False)
         # Convert time index
         Out = indx_fill(Final,idxfll)
         Out.index = pd.to_datetime(Out.index)
         Out = Out.sort_index()
     return Out # Return dataframe to main function.    
+
+def download_data_from_datalake(access, s, col, siteName):
+    # Import libraries needed to connect and credential to the data lake.
+    from azure.storage.filedatalake import DataLakeServiceClient
+    from azure.identity import ClientSecretCredential
+    import datetime
+    from datetime import date
+    from dateutil.relativedelta import relativedelta
+    import pathlib
+
+    # Get today's date
+    today = date.today()
+
+    # Pull the access information from the driver Excel workbook for the datalake in question
+    storage_account_name =  access[col]['storageaccountname']
+    client_id =  access[col]['CLIENTID']
+    tenant_id = access[col]['TENANTID']
+    client_secret = access[col]['CLIENTSECRET']
+    access_path = access[col]['path']
+    localfile = access[col]['LOCAL_DIRECT']
+    if pd.isnull(localfile):
+        localfile = pathlib.Path(access[col]["inputPath"]) / siteName
+        localfile.mkdir(parents=True, exist_ok=True)
+    
+    file_system = access[col]['file_system']
+    back = access[col]['back']
+    # Credential to the client and build the token
+    credential = ClientSecretCredential(tenant_id,client_id, client_secret)
+
+    # Connect to the Data Lake through this function with the access credentials; do not change this.
+    try:  
+        global service_client
+        service_client = DataLakeServiceClient(account_url="{}://{}.dfs.core.windows.net".format(
+            "https", storage_account_name), credential=credential)
+    except Exception as e:
+            print(e)
+    file_system_client = service_client.get_file_system_client(file_system)
+
+    date_inc = datetime.date(s.year, s.month, 1)
+
+    while date_inc <= today:
+        paths = file_system_client.get_paths(f'{access_path}{date_inc.year:04d}/{date_inc.month:02d}')
+
+        for path in paths:
+            # This gets all files for month; need to only download after specified day
+            z = path.name 
+            Y = z[-19:-15]; M = z[-14:-12]; D = z[-11:-9]
+            bd = datetime.date(int(Y), int(M), int(D))  
+
+            date_components = path.name.split('/')[-1].split('_')[3:6]
+            bd = datetime.date(
+                int(date_components[0]), 
+                int(date_components[1]), 
+                int(date_components[2]))
+                     
+            if (bd >= s) & (bd<=today):
+                # If dates are within the correct range, downloads the file to the local directory
+                #local_file = open(localfile+z[back:],'wb'); print(local_file)                
+                filePath = localfile / pathlib.Path(z).name
+                if not filePath.is_file():
+                    local_file = open(filePath, 'wb')
+                    print(str(filePath))
+                    file_client = file_system_client.get_file_client(z)
+                    download = file_client.download_file()
+                    downloaded_bytes = download.readall()
+                    local_file.write(downloaded_bytes)
+                    local_file.close()
+                else:
+                    print(f'Skipping {filePath}')
+
+        date_inc = date_inc + relativedelta(months=1)
+
 
 def Data_Update_Azure(access, s,col, siteName):
     # Import libraries needed to connect and credential to the data lake.
@@ -122,12 +202,18 @@ def Data_Update_Azure(access, s,col, siteName):
                 bd = datetime.date(int(Y), int(M), int(D))                    
                 if (bd >= s)& (bd<=e):
                 # If dates are within the correct range, downloads the file to the local directory
-                    local_file = open(localfile+z[back:],'wb'); print(local_file)                
-                    file_client = file_system_client.get_file_client(z)
-                    download = file_client.download_file()
-                    downloaded_bytes = download.readall()
-                    local_file.write(downloaded_bytes)
-                    local_file.close()
+                    #local_file = open(localfile+z[back:],'wb'); print(local_file)                
+                    filePath = localfile / pathlib.Path(z).name
+                    if not filePath.is_file():
+                        local_file = open(filePath, 'wb')
+                        print(str(filePath))
+                        file_client = file_system_client.get_file_client(z)
+                        download = file_client.download_file()
+                        downloaded_bytes = download.readall()
+                        local_file.write(downloaded_bytes)
+                        local_file.close()
+                    else:
+                        print(f'Skipping {filePath}')
             year = year+1
             yrt = True    
         if year == td.year:
@@ -177,25 +263,28 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     ver = access[col]['Ver']
     cy = wateryear() # Determine wateryear to build file path
     if startDate is None:
-        CE = Fast_Read(glob.glob(CEF),1, Time) # Read in the previous aggregated file(s)
+        CE = Fast_Read(glob.glob(CEF),1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
         s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
-        s_test = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
-        if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
-            s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
-        else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
+        s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
+        #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
+        #    s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
+        #else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
     else: s = parser.parse(startDate).date()
     
     print('Downloading files')
-    Data_Update_Azure(access, s, col, Sites) # Call function to update the Azure data
+    #!!! temp !!!
+    #Data_Update_Azure(access, s, col, Sites) # Call function to update the Azure data
+    download_data_from_datalake(access, s, col, Sites)
+    #!!!!!!!!!!!!
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
         filenames = glob.glob(access[col]['LOCAL_DIRECT']+'\\*.dat') # Gather all the filenames just downloaded
     else: filenames = glob.glob(access[col]["inputPath"] + '\\' + Sites + '\\*.dat')
-    CEN = Fast_Read(filenames, 4,Time) # Read in new files
+    CEN = Fast_Read(filenames, 4,Time, get_dtypes(f'{col}Raw')) # Read in new files
     if 'CE' in locals():
         CE=pd.concat([CE,CEN], sort = False) # Concat new files the main aggregated file
     else: CE = CEN
-    CE = CE.sort_index() # Sort index)
+    CE = CE.sort_index() # Sort index
     CE = CE.dropna(subset=['RECORD']) # Drop any row that has a NaN/blank in the "RECORD" number column; removes the overlap-extra rows added from the previous run
     CE = indx_fill(CE,Time) # Fill back in the index through to the end of the current day. Also removes duplicated values and inserts missing values.
     # CEFClean = CEF[:-4]+'NO_QC'+tag; CEFClean=CEFClean.replace('*','') # Replace something in a string; don't remember why.
@@ -221,7 +310,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        #AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
+        AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
@@ -520,3 +609,556 @@ def Met_QAQC(**kwargs):
         Q.drop(columns=[e_s.columns[0]],inplace=True)
     return Q
  
+def get_dtypes(dataset_type):
+    dtypes = {}
+
+    if dataset_type == "FluxRaw":
+        dtypes = {
+            'RECORD':'Int64',
+            'Fc_molar':float,
+            'Fc_mass':float,
+            'Fc_qc_grade':'Int64',
+            'Fc_samples_Tot':'Int64',
+            'LE':float,
+            'LE_qc_grade':'Int64',
+            'LE_samples_Tot':'Int64',
+            'H':float,
+            'H_qc_grade':'Int64',
+            'H_samples_Tot':'Int64',
+            'Rn':float,
+            'G_surface':float,
+            'energy_closure':float,
+            'Bowen_ratio':float,
+            'tau':float,
+            'tau_qc_grade':'Int64',
+            'u_star':float,
+            'T_star':float,
+            'TKE':float,
+            'amb_tmpr_Avg':float,
+            'Td_Avg':float,
+            'RH_Avg':float,
+            'e_sat_Avg':float,
+            'e_Avg':float,
+            'amb_press_Avg':float,
+            'VPD_air':float,
+            'Ux_Avg':float,
+            'Ux_Std':float,
+            'Uy_Avg':float,
+            'Uy_Std':float,
+            'Uz_Avg':float,
+            'Uz_Std':float,
+            'Ts_Avg':float,
+            'Ts_Std':float,
+            'sonic_azimuth':float,
+            'wnd_spd':float,
+            'rslt_wnd_spd':float,
+            'wnd_dir_sonic':float,
+            'std_wnd_dir':float,
+            'wnd_dir_compass':float,
+            'CO2_molfrac_Avg':float,
+            'CO2_mixratio_Avg':float,
+            'CO2_Avg':float,
+            'CO2_Std':float,
+            'H2O_molfrac_Avg':float,
+            'H2O_mixratio_Avg':float,
+            'H2O_Avg':float,
+            'H2O_Std':float,
+            'CO2_sig_strgth_Min':float,
+            'H2O_sig_strgth_Min':float,
+            'T_probe_Avg':float,
+            'e_probe_Avg':float,
+            'e_sat_probe_Avg':float,
+            'Td_probe_Avg':float,
+            'H2O_probe_Avg':float,
+            'RH_probe_Avg':float,
+            'rho_a_probe_Avg':float,
+            'rho_d_probe_Avg':float,
+            'Precipitation_Tot':float,
+            'Rn_meas_Avg':float,
+            'NRLITE_SENS':float,
+            'PAR_density_Avg':float,
+            'QUANTUM_SENS':float,
+            'cupvane_WS_Avg':float,
+            'cupvane_WS_rslt_Avg':float,
+            'cupvane_WD_rslt_Avg':float,
+            'cupvane_WD_csi_Std':float,
+            'Tsoil_Avg':float,
+            'tdr31X_wc_Avg':float,
+            'tdr31X_tmpr_Avg':float,
+            'tdr31X_E_Avg':float,
+            'tdr31X_bulkEC_Avg':float,
+            'tdr31X_poreEC_Avg':float,
+            'shf_plate_avg':float,
+            'SHFP_1_SENS':float,
+            'profile_tdr31X_wc_Avg(1)':float,
+            'profile_tdr31X_wc_Avg(2)':float,
+            'profile_tdr31X_wc_Avg(3)':float,
+            'profile_tdr31X_wc_Avg(4)':float,
+            'profile_tdr31X_wc_Avg(5)':float,
+            'profile_tdr31X_wc_Avg(6)':float,
+            'profile_tdr31X_tmpr_Avg(1)':float,
+            'profile_tdr31X_tmpr_Avg(2)':float,
+            'profile_tdr31X_tmpr_Avg(3)':float,
+            'profile_tdr31X_tmpr_Avg(4)':float,
+            'profile_tdr31X_tmpr_Avg(5)':float,
+            'profile_tdr31X_tmpr_Avg(6)':float,
+            'profile_tdr31X_E_Avg(1)':float,
+            'profile_tdr31X_E_Avg(2)':float,
+            'profile_tdr31X_E_Avg(3)':float,
+            'profile_tdr31X_E_Avg(4)':float,
+            'profile_tdr31X_E_Avg(5)':float,
+            'profile_tdr31X_E_Avg(6)':float,
+            'profile_tdr31X_bulkEC_Avg(1)':float,
+            'profile_tdr31X_bulkEC_Avg(2)':float,
+            'profile_tdr31X_bulkEC_Avg(3)':float,
+            'profile_tdr31X_bulkEC_Avg(4)':float,
+            'profile_tdr31X_bulkEC_Avg(5)':float,
+            'profile_tdr31X_bulkEC_Avg(6)':float,
+            'profile_tdr31X_poreEC_Avg(1)':float,
+            'profile_tdr31X_poreEC_Avg(2)':float,
+            'profile_tdr31X_poreEC_Avg(3)':float,
+            'profile_tdr31X_poreEC_Avg(4)':float,
+            'profile_tdr31X_poreEC_Avg(5)':float,
+            'profile_tdr31X_poreEC_Avg(6)':float,
+            'upwnd_dist_intrst':float,
+            'FP_dist_intrst':float,
+            'FP_max':float,
+            'FP_40':float,
+            'FP_55':float,
+            'FP_90':float,
+            'FP_Equation':object,
+            'UxUy_Cov':float,
+            'UxUz_Cov':float,
+            'UyUz_Cov':float,
+            'TsUx_Cov':float,
+            'TsUy_Cov':float,
+            'TsUz_Cov':float,
+            'u_star_R':float,
+            'u_Avg_R':float,
+            'u_Std_R':float,
+            'v_Avg_R':float,
+            'v_Std_R':float,
+            'w_Avg_R':float,
+            'w_Std_R':float,
+            'uv_Cov_R':float,
+            'uw_Cov_R':float,
+            'vw_Cov_R':float,
+            'uTs_Cov_R':float,
+            'vTs_Cov_R':float,
+            'wTs_Cov_R':float,
+            'uw_Cov_R_F':float,
+            'vw_Cov_R_F':float,
+            'wTs_Cov_R_F':float,
+            'wTs_Cov_R_F_SND':float,
+            'sonic_samples_Tot':'Int64',
+            'no_sonic_head_Tot':'Int64',
+            'no_new_sonic_data_Tot':'Int64',
+            'sonic_amp_l_f_Tot':'Int64',
+            'sonic_amp_h_f_Tot':'Int64',
+            'sonic_sig_lck_f_Tot':'Int64',
+            'sonic_del_T_f_Tot':'Int64',
+            'sonic_aq_sig_f_Tot':'Int64',
+            'sonic_cal_err_f_Tot':'Int64',
+            'UxCO2_Cov':float,
+            'UyCO2_Cov':float,
+            'UzCO2_Cov':float,
+            'UxH2O_Cov':float,
+            'UyH2O_Cov':float,
+            'UzH2O_Cov':float,
+            'uCO2_Cov_R':float,
+            'vCO2_Cov_R':float,
+            'wCO2_Cov_R':float,
+            'uH2O_Cov_R':float,
+            'vH2O_Cov_R':float,
+            'wH2O_Cov_R':float,
+            'wCO2_Cov_R_F':float,
+            'wH2O_Cov_R_F':float,
+            'CO2_E_WPL_R_F':float,
+            'CO2_T_WPL_R_F':float,
+            'H2O_E_WPL_R_F':float,
+            'H2O_T_WPL_R_F':float,
+            'CO2_samples_Tot':'Int64',
+            'H2O_samples_Tot':'Int64',
+            'no_irga_head_Tot':'Int64',
+            'no_new_irga_data_Tot':'Int64',
+            'irga_bad_data_f_Tot':'Int64',
+            'irga_gen_fault_f_Tot':'Int64',
+            'irga_startup_f_Tot':'Int64',
+            'irga_motor_spd_f_Tot':'Int64',
+            'irga_tec_tmpr_f_Tot':'Int64',
+            'irga_src_pwr_f_Tot':'Int64',
+            'irga_src_tmpr_f_Tot':'Int64',
+            'irga_src_curr_f_Tot':'Int64',
+            'irga_off_f_Tot':'Int64',
+            'irga_sync_f_Tot':'Int64',
+            'irga_amb_tmpr_f_Tot':'Int64',
+            'irga_amb_press_f_Tot':'Int64',
+            'irga_CO2_I_f_Tot':'Int64',
+            'irga_CO2_Io_f_Tot':'Int64',
+            'irga_H2O_I_f_Tot':'Int64',
+            'irga_H2O_Io_f_Tot':'Int64',
+            'irga_CO2_Io_var_f_Tot':'Int64',
+            'irga_H2O_Io_var_f_Tot':'Int64',
+            'irga_CO2_sig_strgth_f_Tot':'Int64',
+            'irga_H2O_sig_strgth_f_Tot':'Int64',
+            'irga_cal_err_f_Tot':'Int64',
+            'irga_htr_ctrl_off_f_Tot':'Int64',
+            'alpha':float,
+            'beta':float,
+            'gamma':float,
+            'height_measurement':float,
+            'height_canopy':float,
+            'surface_type_text':object,
+            'displacement_user':float,
+            'd':float,
+            'roughness_user':float,
+            'z0':float,
+            'z':float,
+            'L':float,
+            'stability_zL':float,
+            'iteration_FreqFactor':float,
+            'latitude':float,
+            'longitude':float,
+            'separation_x_irga':float,
+            'separation_y_irga':float,
+            'separation_lat_dist_irga':float,
+            'separation_lag_dist_irga':float,
+            'separation_lag_scan_irga':float,
+            'MAX_LAG':'Int64',
+            'lag_irga':'Int64',
+            'FreqFactor_uw_vw':float,
+            'FreqFactor_wTs':float,
+            'FreqFactor_wCO2_wH2O':float,
+            'rho_d_Avg':float,
+            'rho_a_Avg':float,
+            'Cp':float,
+            'Lv':float,
+            'batt_V_Avg':float,
+            'batt_sens_V_Avg':float,
+            'array_V_Avg':float,
+            'charge_I_Avg':float,
+            'batt_V_slow_Avg':float,
+            'heatsink_T_Avg':float,
+            'batt_T_Avg':float,
+            'reference_V_Avg':float,
+            'ah_reset':float,
+            'ah_total':float,
+            'hourmeter':float,
+            'alarm_bits':float,
+            'fault_bits':float,
+            'dip_num_Avg':float,
+            'state_num_Avg':float,
+            'pwm_duty_Avg':float,
+            'door_is_open_Hst':float,
+            'panel_tmpr_Avg':float,
+            'batt_volt_Avg':float,
+            'slowsequence_Tot':'Int64',
+            'process_time_Avg':float,
+            'process_time_Max':float,
+            'buff_depth_Max':float
+        }
+    elif dataset_type == "FluxAggregated":
+        dtypes = {
+            'RECORD':'Int64',
+            'Fc_molar':float,
+            'Fc_mass':float,
+            'Fc_qc_grade':'Int64',
+            'Fc_samples_Tot':'Int64',
+            'LE':float,
+            'LE_qc_grade':'Int64',
+            'LE_samples_Tot':'Int64',
+            'H':float,
+            'H_qc_grade':'Int64',
+            'H_samples_Tot':'Int64',
+            'Rn':float,
+            'G_surface':float,
+            'energy_closure':float,
+            'Bowen_ratio':float,
+            'tau':float,
+            'tau_qc_grade':'Int64',
+            'u_star':float,
+            'T_star':float,
+            'TKE':float,
+            'amb_tmpr_Avg':float,
+            'Td_Avg':float,
+            'RH_Avg':float,
+            'e_sat_Avg':float,
+            'e_Avg':float,
+            'amb_press_Avg':float,
+            'VPD_air':float,
+            'Ux_Avg':float,
+            'Ux_Std':float,
+            'Uy_Avg':float,
+            'Uy_Std':float,
+            'Uz_Avg':float,
+            'Uz_Std':float,
+            'Ts_Avg':float,
+            'Ts_Std':float,
+            'sonic_azimuth':float,
+            'wnd_spd':float,
+            'rslt_wnd_spd':float,
+            'wnd_dir_sonic':float,
+            'std_wnd_dir':float,
+            'wnd_dir_compass':float,
+            'CO2_molfrac_Avg':float,
+            'CO2_mixratio_Avg':float,
+            'CO2_Avg':float,
+            'CO2_Std':float,
+            'H2O_molfrac_Avg':float,
+            'H2O_mixratio_Avg':float,
+            'H2O_Avg':float,
+            'H2O_Std':float,
+            'CO2_sig_strgth_Min':float,
+            'H2O_sig_strgth_Min':float,
+            'T_probe_Avg':float,
+            'e_probe_Avg':float,
+            'e_sat_probe_Avg':float,
+            'Td_probe_Avg':float,
+            'H2O_probe_Avg':float,
+            'RH_probe_Avg':float,
+            'rho_a_probe_Avg':float,
+            'rho_d_probe_Avg':float,
+            'Precipitation_Tot':float,
+            'Rn_meas_Avg':float,
+            'NRLITE_SENS':float,
+            'PAR_density_Avg':float,
+            'QUANTUM_SENS':float,
+            'cupvane_WS_Avg':float,
+            'cupvane_WS_rslt_Avg':float,
+            'cupvane_WD_rslt_Avg':float,
+            'cupvane_WD_csi_Std':float,
+            'Tsoil_Avg':float,
+            'tdr31X_wc_Avg':float,
+            'tdr31X_tmpr_Avg':float,
+            'tdr31X_E_Avg':float,
+            'tdr31X_bulkEC_Avg':float,
+            'tdr31X_poreEC_Avg':float,
+            'shf_plate_avg':float,
+            'SHFP_1_SENS':float,
+            'profile_tdr31X_wc_Avg(1)':float,
+            'profile_tdr31X_wc_Avg(2)':float,
+            'profile_tdr31X_wc_Avg(3)':float,
+            'profile_tdr31X_wc_Avg(4)':float,
+            'profile_tdr31X_wc_Avg(5)':float,
+            'profile_tdr31X_wc_Avg(6)':float,
+            'profile_tdr31X_tmpr_Avg(1)':float,
+            'profile_tdr31X_tmpr_Avg(2)':float,
+            'profile_tdr31X_tmpr_Avg(3)':float,
+            'profile_tdr31X_tmpr_Avg(4)':float,
+            'profile_tdr31X_tmpr_Avg(5)':float,
+            'profile_tdr31X_tmpr_Avg(6)':float,
+            'profile_tdr31X_E_Avg(1)':float,
+            'profile_tdr31X_E_Avg(2)':float,
+            'profile_tdr31X_E_Avg(3)':float,
+            'profile_tdr31X_E_Avg(4)':float,
+            'profile_tdr31X_E_Avg(5)':float,
+            'profile_tdr31X_E_Avg(6)':float,
+            'profile_tdr31X_bulkEC_Avg(1)':float,
+            'profile_tdr31X_bulkEC_Avg(2)':float,
+            'profile_tdr31X_bulkEC_Avg(3)':float,
+            'profile_tdr31X_bulkEC_Avg(4)':float,
+            'profile_tdr31X_bulkEC_Avg(5)':float,
+            'profile_tdr31X_bulkEC_Avg(6)':float,
+            'profile_tdr31X_poreEC_Avg(1)':float,
+            'profile_tdr31X_poreEC_Avg(2)':float,
+            'profile_tdr31X_poreEC_Avg(3)':float,
+            'profile_tdr31X_poreEC_Avg(4)':float,
+            'profile_tdr31X_poreEC_Avg(5)':float,
+            'profile_tdr31X_poreEC_Avg(6)':float,
+            'upwnd_dist_intrst':float,
+            'FP_dist_intrst':float,
+            'FP_max':float,
+            'FP_40':float,
+            'FP_55':float,
+            'FP_90':float,
+            'FP_Equation':object,
+            'UxUy_Cov':float,
+            'UxUz_Cov':float,
+            'UyUz_Cov':float,
+            'TsUx_Cov':float,
+            'TsUy_Cov':float,
+            'TsUz_Cov':float,
+            'u_star_R':float,
+            'u_Avg_R':float,
+            'u_Std_R':float,
+            'v_Avg_R':float,
+            'v_Std_R':float,
+            'w_Avg_R':float,
+            'w_Std_R':float,
+            'uv_Cov_R':float,
+            'uw_Cov_R':float,
+            'vw_Cov_R':float,
+            'uTs_Cov_R':float,
+            'vTs_Cov_R':float,
+            'wTs_Cov_R':float,
+            'uw_Cov_R_F':float,
+            'vw_Cov_R_F':float,
+            'wTs_Cov_R_F':float,
+            'wTs_Cov_R_F_SND':float,
+            'sonic_samples_Tot':'Int64',
+            'no_sonic_head_Tot':'Int64',
+            'no_new_sonic_data_Tot':'Int64',
+            'sonic_amp_l_f_Tot':'Int64',
+            'sonic_amp_h_f_Tot':'Int64',
+            'sonic_sig_lck_f_Tot':'Int64',
+            'sonic_del_T_f_Tot':'Int64',
+            'sonic_aq_sig_f_Tot':'Int64',
+            'sonic_cal_err_f_Tot':'Int64',
+            'UxCO2_Cov':float,
+            'UyCO2_Cov':float,
+            'UzCO2_Cov':float,
+            'UxH2O_Cov':float,
+            'UyH2O_Cov':float,
+            'UzH2O_Cov':float,
+            'uCO2_Cov_R':float,
+            'vCO2_Cov_R':float,
+            'wCO2_Cov_R':float,
+            'uH2O_Cov_R':float,
+            'vH2O_Cov_R':float,
+            'wH2O_Cov_R':float,
+            'wCO2_Cov_R_F':float,
+            'wH2O_Cov_R_F':float,
+            'CO2_E_WPL_R_F':float,
+            'CO2_T_WPL_R_F':float,
+            'H2O_E_WPL_R_F':float,
+            'H2O_T_WPL_R_F':float,
+            'CO2_samples_Tot':'Int64',
+            'H2O_samples_Tot':'Int64',
+            'no_irga_head_Tot':'Int64',
+            'no_new_irga_data_Tot':'Int64',
+            'irga_bad_data_f_Tot':'Int64',
+            'irga_gen_fault_f_Tot':'Int64',
+            'irga_startup_f_Tot':'Int64',
+            'irga_motor_spd_f_Tot':'Int64',
+            'irga_tec_tmpr_f_Tot':'Int64',
+            'irga_src_pwr_f_Tot':'Int64',
+            'irga_src_tmpr_f_Tot':'Int64',
+            'irga_src_curr_f_Tot':'Int64',
+            'irga_off_f_Tot':'Int64',
+            'irga_sync_f_Tot':'Int64',
+            'irga_amb_tmpr_f_Tot':'Int64',
+            'irga_amb_press_f_Tot':'Int64',
+            'irga_CO2_I_f_Tot':'Int64',
+            'irga_CO2_Io_f_Tot':'Int64',
+            'irga_H2O_I_f_Tot':'Int64',
+            'irga_H2O_Io_f_Tot':'Int64',
+            'irga_CO2_Io_var_f_Tot':'Int64',
+            'irga_H2O_Io_var_f_Tot':'Int64',
+            'irga_CO2_sig_strgth_f_Tot':'Int64',
+            'irga_H2O_sig_strgth_f_Tot':'Int64',
+            'irga_cal_err_f_Tot':'Int64',
+            'irga_htr_ctrl_off_f_Tot':'Int64',
+            'alpha':float,
+            'beta':float,
+            'gamma':float,
+            'height_measurement':float,
+            'height_canopy':float,
+            'surface_type_text':object,
+            'displacement_user':float,
+            'd':float,
+            'roughness_user':float,
+            'z0':float,
+            'z':float,
+            'L':float,
+            'stability_zL':float,
+            'iteration_FreqFactor':float,
+            'latitude':float,
+            'longitude':float,
+            'separation_x_irga':float,
+            'separation_y_irga':float,
+            'separation_lat_dist_irga':float,
+            'separation_lag_dist_irga':float,
+            'separation_lag_scan_irga':float,
+            'MAX_LAG':'Int64',
+            'lag_irga':'Int64',
+            'FreqFactor_uw_vw':float,
+            'FreqFactor_wTs':float,
+            'FreqFactor_wCO2_wH2O':float,
+            'rho_d_Avg':float,
+            'rho_a_Avg':float,
+            'Cp':float,
+            'Lv':float,
+            'batt_V_Avg':float,
+            'batt_sens_V_Avg':float,
+            'array_V_Avg':float,
+            'charge_I_Avg':float,
+            'batt_V_slow_Avg':float,
+            'heatsink_T_Avg':float,
+            'batt_T_Avg':float,
+            'reference_V_Avg':float,
+            'ah_reset':float,
+            'ah_total':float,
+            'hourmeter':float,
+            'alarm_bits':float,
+            'fault_bits':float,
+            'dip_num_Avg':float,
+            'state_num_Avg':float,
+            'pwm_duty_Avg':float,
+            'door_is_open_Hst':float,
+            'panel_tmpr_Avg':float,
+            'batt_volt_Avg':float,
+            'slowsequence_Tot':'Int64',
+            'process_time_Avg':float,
+            'process_time_Max':float,
+            'buff_depth_Max':float,
+            'H_Flags':'Int64',
+            'LE_Flags':'Int64',
+            'Fc_Flags':'Int64',
+            'H_Graded':float,
+            'LE_Graded':float,
+            'Fc_molar_Graded':float,
+            'Tair_Hard_Limit':object,
+            'Tair_Change':object,
+            'Tair_Day_Change':object,
+            'Tair_Filtered':float,
+            'RH_Hard_Limit':object,
+            'RH_gt_100':object,
+            'RH_Change':object,
+            'RH_Day_Change':object,
+            'RH_Filtered':float,
+            'P_Hard_Limit':object,
+            'P_Change':object,
+            'P_Filtered':float,
+            'MSLP':float,
+            'MSLP_Hard_Limit':object,
+            'MSLP_Change':object,
+            'MSLP_Filtered':float,
+            'WS_Hard_Limit':object,
+            'WS_Change':object,
+            'WS_Day_Change':object,
+            'WS_Filtered':float,
+            'WD_Hard_Limit':object,
+            'WD_Change':object,
+            'WD_Filtered':float,
+            'PAR_Hard_Limit':object,
+            'PAR_Change':object,
+            'PAR_Day_Change':object,
+            'PAR_Filtered':float,
+            'Rn_Hard_Limit':object,
+            'Rn_Change':object,
+            'Rn_Day_Change':object,
+            'Rn_Filtered':float,
+            'Precip_Hard_Limit':object,
+            'Precip_RH_gt_90':object,
+            'Precip_Tair_lt_Zero':object,
+            'Precip_Filtered':float,
+            'VPD_Hard_Limit':object,
+            'VPD_Change':object,
+            'VPD_Day_Change':object,
+            'VPD_Filtered':float,
+            'e_Hard_Limit':object,
+            'e_Change':object,
+            'e_Day_Change':object,
+            'e_Filtered':float,
+            'e_s_Hard_Limit':object,
+            'e_s_Change':object,
+            'e_s_Day_Change':object,
+            'e_s_Filtered':float
+        }
+
+    elif dataset_type == "MetRaw":
+        dtypes = {}
+    elif dataset_type == "MetAggregated":
+        dtypes = {}
+
+    return dtypes
