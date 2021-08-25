@@ -29,13 +29,23 @@ def format_plot(ax,yf,xf,xminor,yminor,yl,yu,xl,xu):
     plt.xlim([xl,xu])  
     return
 
-def indx_fill(df, frq):   
+def indx_fill(df_in, frq):   
     # Fills in missing index values for a continuous time series. Rows are left blank.
+    df = df_in.copy()
+
     df.index = pd.to_datetime(df.index)
-    # Sort index in case it came in out of order, a possibility depending on filenames and naming scheme
-    df = df.sort_index()
-    # Remove any duplicate times, can occur if files from mixed sources and have overlapping endpoints
+    
+#    # Sort index in case it came in out of order, a possibility depending on filenames and naming scheme
+#    df = df.sort_index()
+#    # Remove any duplicate times, can occur if files from mixed sources and have overlapping endpoints
+#    df = df[~df.index.duplicated(keep='first')]
+
+    # Remove any duplicated rows; keep row with more data
+    df['nan_count'] = pd.isna(df).sum(1)
+    df = df.sort_values(['RECORD', 'nan_count']) # Can sort on RECORD here because values with null/na index were previously removed
     df = df[~df.index.duplicated(keep='first')]
+    df = df.drop('nan_count',1).sort_index()
+
         # Fill in missing times due to tower being down and pad dataframe to midnight of the first and last day
     idx = pd.date_range(df.index[0].floor('D'),df.index[len(df.index)-1].ceil('D'),freq = frq)
     # Reindex the dataframe with the new index and fill the missing values with NaN/blanks
@@ -154,6 +164,7 @@ def download_data_from_datalake(access, s, col, siteName):
 
 
 def Data_Update_Azure(access, s,col, siteName):
+    raise Exception('Deprecated: use download_data_from_datalake instead') 
     # Import libraries needed to connect and credential to the data lake.
     from azure.storage.filedatalake import DataLakeServiceClient
     from azure.identity import ClientSecretCredential
@@ -272,10 +283,9 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     else: s = parser.parse(startDate).date()
     
     print('Downloading files')
-    #!!! temp !!!
-    #Data_Update_Azure(access, s, col, Sites) # Call function to update the Azure data
+    # Call function to update the Azure data
     download_data_from_datalake(access, s, col, Sites)
-    #!!!!!!!!!!!!
+
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
         filenames = glob.glob(access[col]['LOCAL_DIRECT']+'\\*.dat') # Gather all the filenames just downloaded
@@ -310,7 +320,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
+        #AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
@@ -1157,8 +1167,164 @@ def get_dtypes(dataset_type):
         }
 
     elif dataset_type == "MetRaw":
-        dtypes = {}
+        dtypes = {
+            'RECORD':float,
+            'amb_tmpr_Avg':float,
+            'rslt_wnd_spd':float,
+            'wnd_dir_compass':float,
+            'RH_Avg':float,
+            'Precipitation_Tot':float,
+            'amb_press_Avg':float,
+            'PAR_density_Avg':float,
+            'batt_volt_Avg':float,
+            'panel_tmpr_Avg':float,
+            'std_wnd_dir':float,
+            'VPD_air':float,
+            'Rn_meas_Avg':float,
+            'e_sat':float,
+            'e':float,
+            'tdr31X_wc_Avg':float,
+            'tdr31X_tmpr_Avg':float,
+            'tdr31X_E_Avg':float,
+            'tdr31X_bulkEC_Avg':float,
+            'tdr31X_poreEC_Avg':float,
+            'Tsoil_Avg':float,
+            'profile_tdr31X_wc_Avg(1)':float,
+            'profile_tdr31X_wc_Avg(2)':float,
+            'profile_tdr31X_wc_Avg(3)':float,
+            'profile_tdr31X_wc_Avg(4)':float,
+            'profile_tdr31X_wc_Avg(5)':float,
+            'profile_tdr31X_wc_Avg(6)':float,
+            'profile_tdr31X_tmpr_Avg(1)':float,
+            'profile_tdr31X_tmpr_Avg(2)':float,
+            'profile_tdr31X_tmpr_Avg(3)':float,
+            'profile_tdr31X_tmpr_Avg(4)':float,
+            'profile_tdr31X_tmpr_Avg(5)':float,
+            'profile_tdr31X_tmpr_Avg(6)':float,
+            'profile_tdr31X_E_Avg(1)':float,
+            'profile_tdr31X_E_Avg(2)':float,
+            'profile_tdr31X_E_Avg(3)':float,
+            'profile_tdr31X_E_Avg(4)':float,
+            'profile_tdr31X_E_Avg(5)':float,
+            'profile_tdr31X_E_Avg(6)':float,
+            'profile_tdr31X_bulkEC_Avg(1)':float,
+            'profile_tdr31X_bulkEC_Avg(2)':float,
+            'profile_tdr31X_bulkEC_Avg(3)':float,
+            'profile_tdr31X_bulkEC_Avg(4)':float,
+            'profile_tdr31X_bulkEC_Avg(5)':float,
+            'profile_tdr31X_bulkEC_Avg(6)':float,
+            'profile_tdr31X_poreEC_Avg(1)':float,
+            'profile_tdr31X_poreEC_Avg(2)':float,
+            'profile_tdr31X_poreEC_Avg(3)':float,
+            'profile_tdr31X_poreEC_Avg(4)':float,
+            'profile_tdr31X_poreEC_Avg(5)':float,
+            'profile_tdr31X_poreEC_Avg(6)':float,
+            'shf_plate_avg':float,
+            'SHFP_1_SENS':float
+        }
+
     elif dataset_type == "MetAggregated":
-        dtypes = {}
+        dtypes = {
+            'RECORD':float,
+            'amb_tmpr_Avg':float,
+            'rslt_wnd_spd':float,
+            'wnd_dir_compass':float,
+            'RH_Avg':float,
+            'Precipitation_Tot':float,
+            'amb_press_Avg':float,
+            'PAR_density_Avg':float,
+            'batt_volt_Avg':float,
+            'panel_tmpr_Avg':float,
+            'std_wnd_dir':float,
+            'VPD_air':float,
+            'Rn_meas_Avg':float,
+            'e_sat':float,
+            'e':float,
+            'tdr31X_wc_Avg':float,
+            'tdr31X_tmpr_Avg':float,
+            'tdr31X_E_Avg':float,
+            'tdr31X_bulkEC_Avg':float,
+            'tdr31X_poreEC_Avg':float,
+            'Tsoil_Avg':float,
+            'profile_tdr31X_wc_Avg(1)':float,
+            'profile_tdr31X_wc_Avg(2)':float,
+            'profile_tdr31X_wc_Avg(3)':float,
+            'profile_tdr31X_wc_Avg(4)':float,
+            'profile_tdr31X_wc_Avg(5)':float,
+            'profile_tdr31X_wc_Avg(6)':float,
+            'profile_tdr31X_tmpr_Avg(1)':float,
+            'profile_tdr31X_tmpr_Avg(2)':float,
+            'profile_tdr31X_tmpr_Avg(3)':float,
+            'profile_tdr31X_tmpr_Avg(4)':float,
+            'profile_tdr31X_tmpr_Avg(5)':float,
+            'profile_tdr31X_tmpr_Avg(6)':float,
+            'profile_tdr31X_E_Avg(1)':float,
+            'profile_tdr31X_E_Avg(2)':float,
+            'profile_tdr31X_E_Avg(3)':float,
+            'profile_tdr31X_E_Avg(4)':float,
+            'profile_tdr31X_E_Avg(5)':float,
+            'profile_tdr31X_E_Avg(6)':float,
+            'profile_tdr31X_bulkEC_Avg(1)':float,
+            'profile_tdr31X_bulkEC_Avg(2)':float,
+            'profile_tdr31X_bulkEC_Avg(3)':float,
+            'profile_tdr31X_bulkEC_Avg(4)':float,
+            'profile_tdr31X_bulkEC_Avg(5)':float,
+            'profile_tdr31X_bulkEC_Avg(6)':float,
+            'profile_tdr31X_poreEC_Avg(1)':float,
+            'profile_tdr31X_poreEC_Avg(2)':float,
+            'profile_tdr31X_poreEC_Avg(3)':float,
+            'profile_tdr31X_poreEC_Avg(4)':float,
+            'profile_tdr31X_poreEC_Avg(5)':float,
+            'profile_tdr31X_poreEC_Avg(6)':float,
+            'shf_plate_avg':float,
+            'SHFP_1_SENS':float,
+            'Tair_Hard_Limit':object,
+            'Tair_Change':object,
+            'Tair_Day_Change':object,
+            'Tair_Filtered':float,
+            'RH_Hard_Limit':object,
+            'RH_gt_100':object,
+            'RH_Change':object,
+            'RH_Day_Change':object,
+            'RH_Filtered':float,
+            'P_Hard_Limit':object,
+            'P_Change':object,
+            'P_Filtered':float,
+            'MSLP':float,
+            'MSLP_Hard_Limit':object,
+            'MSLP_Change':object,
+            'MSLP_Filtered':float,
+            'WS_Hard_Limit':object,
+            'WS_Change':object,
+            'WS_Day_Change':object,
+            'WS_Filtered':float,
+            'WD_Hard_Limit':object,
+            'WD_Change':object,
+            'WD_Filtered':float,
+            'PAR_Hard_Limit':object,
+            'PAR_Change':object,
+            'PAR_Day_Change':object,
+            'PAR_Filtered':float,
+            'Rn_Hard_Limit':object,
+            'Rn_Change':object,
+            'Rn_Day_Change':object,
+            'Rn_Filtered':float,
+            'Precip_Hard_Limit':object,
+            'Precip_RH_gt_90':object,
+            'Precip_Tair_lt_Zero':object,
+            'Precip_Filtered':float,
+            'VPD_Hard_Limit':object,
+            'VPD_Change':object,
+            'VPD_Day_Change':object,
+            'VPD_Filtered':float,
+            'e_Hard_Limit':object,
+            'e_Change':object,
+            'e_Day_Change':object,
+            'e_Filtered':float,
+            'e_s_Hard_Limit':object,
+            'e_s_Change':object,
+            'e_s_Day_Change':object,
+            'e_s_Filtered':float
+        }
 
     return dtypes
