@@ -28,7 +28,7 @@ save = True # If want to save the aggregated file or not; default is True
 # !!! temp !!!
 #Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
 
-Sites = ['CookEast']
+Sites = ['CookWest']
 #!!!!!!!!!!!!!
 
 #S_V = ['40826','40826','18329','18329']
@@ -76,7 +76,7 @@ for dataTable in DataTables:
         # {Site}\{Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
         globString = Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
         #globString = Sites[k] + "\\" + Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
-        CEF = str(outputPath / Sites[k] / globString)
+        CEF = str(outputPath / Sites[k] / col / globString)
 
         # Calls the function that access the Azure data lake using the options given in the first section. 
         # Can add the save and date options if want them to be different than the default

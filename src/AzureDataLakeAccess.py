@@ -63,11 +63,18 @@ def Fast_Read(filenames, hdr, idxfll, specified_dtypes = None):
         for k in range (0,len(filenames)):
             #Read in data and concat to one dataframe; no processing until data all read in
             if specified_dtypes:
-                df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],na_values='NAN',dtype=specified_dtypes)
+                try:
+                    df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],na_values='NAN',dtype=specified_dtypes)
+                except:
+                    continue
             else:
-                df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],na_values='NAN',low_memory=False)
+                try:
+                    df = pd.read_csv(filenames[k],index_col = 'TIMESTAMP',header= 1,skiprows=[2,3],na_values='NAN',low_memory=False)
+                except:
+                    continue
 
             Final = pd.concat([Final,df], sort = False)
+        
         # Fill missing index with blank values
         Out = indx_fill(Final, idxfll)
         # Convert to datetime for the index
@@ -110,8 +117,9 @@ def download_data_from_datalake(access, s, col, siteName):
     client_secret = access[col]['CLIENTSECRET']
     access_path = access[col]['path']
     localfile = access[col]['LOCAL_DIRECT']
+    # If localfile is not defined in xlsx file, then default to something like: input/CookEast/Met
     if pd.isnull(localfile):
-        localfile = pathlib.Path(access[col]["inputPath"]) / siteName
+        localfile = pathlib.Path(access[col]["inputPath"]) / siteName / col
         localfile.mkdir(parents=True, exist_ok=True)
     
     file_system = access[col]['file_system']
@@ -136,10 +144,10 @@ def download_data_from_datalake(access, s, col, siteName):
         for path in paths:
             # This gets all files for month; need to only download after specified day
             z = path.name 
-            Y = z[-19:-15]; M = z[-14:-12]; D = z[-11:-9]
-            bd = datetime.date(int(Y), int(M), int(D))  
+            #Y = z[-19:-15]; M = z[-14:-12]; D = z[-11:-9]
+            #bd = datetime.date(int(Y), int(M), int(D))  
 
-            date_components = path.name.split('/')[-1].split('_')[3:6]
+            date_components = z.split('/')[-1].split('_')[3:6]
             bd = datetime.date(
                 int(date_components[0]), 
                 int(date_components[1]), 
@@ -289,7 +297,8 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
         filenames = glob.glob(access[col]['LOCAL_DIRECT']+'\\*.dat') # Gather all the filenames just downloaded
-    else: filenames = glob.glob(access[col]["inputPath"] + '\\' + Sites + '\\*.dat')
+        #globString = Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
+    else: filenames = glob.glob(access[col]["inputPath"] + '\\' + Sites + '\\' + col + '\\*.dat')
     CEN = Fast_Read(filenames, 4,Time, get_dtypes(f'{col}Raw')) # Read in new files
     if 'CE' in locals():
         CE=pd.concat([CE,CEN], sort = False) # Concat new files the main aggregated file
@@ -321,8 +330,8 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
         #AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
-    for f in filenames:
-        os.remove(f)   # Delete downloaded files on local machines as no longer needed
+#    for f in filenames:
+#        os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
     del CEN; del CE; return df # Delete variables for clean rerun as needed
 
