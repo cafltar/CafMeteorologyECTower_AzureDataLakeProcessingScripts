@@ -51,32 +51,32 @@ for dataTable in DataTables:
     col = dataTable['col']
     Time = dataTable['Time']
 
-#    for k in range (0,len(Sites)):
-#        # Different file structure and output locations for the different sites
-#        access = pd.read_excel(configPath, sheet_name =Sites[k],index_col = 'Variable')
-#
-#        # Add path information to access
-#        access[col]["inputPath"] = str(inputPath)
-#        access[col]["workingPath"] = str(workingPath)
-#        access[col]["outputPath"] = str(outputPath)
-#
-#        # Directory should be where the base file starts. There needs to be some start file even if it is blank with the date of the start point; 
-#        # I haven't sorted out a "first" pass without a start file to be used. 
-#        colT = col + '_' + access[col]['Ver']
-#        #CEF = 'C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\'+Sites[k]+'*_'+colT+'*.csv' 
-#        #globString = Sites[k]+'*_'+colT+'*.csv'
-#
-#        # {Site}\{Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
-#        globString = Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
-#        #globString = Sites[k] + "\\" + Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
-#        CEF = str(outputPath / Sites[k] / col / globString)
-#
-#        # Calls the function that access the Azure data lake using the options given in the first section. 
-#        # Can add the save and date options if want them to be different than the default
-#        
-#        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
-#        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True, startDate="2021-01-27")
-#
+    for k in range (0,len(Sites)):
+        # Different file structure and output locations for the different sites
+        access = pd.read_excel(configPath, sheet_name =Sites[k],index_col = 'Variable')
+
+        # Add path information to access
+        access[col]["inputPath"] = str(inputPath)
+        access[col]["workingPath"] = str(workingPath)
+        access[col]["outputPath"] = str(outputPath)
+
+        # Directory should be where the base file starts. There needs to be some start file even if it is blank with the date of the start point; 
+        # I haven't sorted out a "first" pass without a start file to be used. 
+        colT = col + '_' + access[col]['Ver']
+        #CEF = 'C:\\Users\\russe\\Desktop\\LTAR\\Problems\\Temp\\Aggregate\\'+Sites[k]+'*_'+colT+'*.csv' 
+        #globString = Sites[k]+'*_'+colT+'*.csv'
+
+        # {Site}\{Site}_{Met/Flux}_AggregateQC_CY{YYYY}_V{ProgramSignature}_{YYYYMMDD}.csv
+        globString = Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
+        #globString = Sites[k] + "\\" + Sites[k] + '_' + col + '_AggregateQC_CY*' + '_' + access[col]['Ver'] + '*.csv'
+        CEF = str(outputPath / Sites[k] / col / globString)
+
+        # Calls the function that access the Azure data lake using the options given in the first section. 
+        # Can add the save and date options if want them to be different than the default
+        
+        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
+        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF,tag, QC=True, startDate="2021-01-27")
+
     if col =='Flux':
         TRP.TowerReport(str(outputPath))
 #    if col == 'Met':
