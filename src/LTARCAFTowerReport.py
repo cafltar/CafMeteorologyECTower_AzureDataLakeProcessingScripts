@@ -20,16 +20,11 @@ import pathlib
 flux = {'col': 'Flux', 'Time': '30T'}
 met = {'col': 'Met', 'Time': '15T'}
 
-#DataTables = [flux, met]
-DataTables = [met]
+DataTables = [flux, met]
 
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
-# !!! temp !!!
-#Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
-
-Sites = ['CookWest']
-#!!!!!!!!!!!!!
+Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
 
 #S_V = ['40826','40826','18329','18329']
 
@@ -86,6 +81,6 @@ for dataTable in DataTables:
 
     if col =='Flux':
         TRP.TowerReport(str(outputPath))
-    if col == 'Met':
-        TRP.MetTowerReport(str(outputPath))
+#    if col == 'Met':
+#        TRP.MetTowerReport(str(outputPath))
 
