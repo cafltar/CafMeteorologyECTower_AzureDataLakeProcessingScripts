@@ -332,8 +332,8 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
         #AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
-#    for f in filenames:
-#        os.remove(f)   # Delete downloaded files on local machines as no longer needed
+    for f in filenames:
+        os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
     del CEN; del CE; return df # Delete variables for clean rerun as needed
 
