@@ -9,6 +9,7 @@ Library of functions for the Azure Data Lake download codeset; see the readme wi
 Comments in this are specific to the functions
 """
 # General library imports for functions; some functions have the import statements as part of the function
+import pathlib
 import pandas as pd
 import numpy as np
 import os
@@ -272,7 +273,32 @@ def wateryear():
     else:
         wateryear = str(int(str(date.today()).replace('-','')[0:4])+1)
     return wateryear # Returns water year as a string.
-    
+
+def get_latest_file(files):
+    """Takes a list of files (probably from glob) and returns the one with the latest date stamp (in form of _YYYYMMDD at end of the filename)
+    """
+
+    latest_file = files[0]
+
+    for f in files:
+        if get_datetime_from_filename(f) > get_datetime_from_filename(latest_file):
+            latest_file = f
+
+    return latest_file
+
+def get_datetime_from_filename(filestring:str):
+    """Takes a filename or filepath string and returns a datetime object representing the iso date in the filename
+    """
+    import datetime
+
+    stem = pathlib.Path(filestring).stem
+    isodate = stem.split('_')[-1]
+    dt = datetime.datetime.strptime(isodate, '%Y%m%d')
+
+    return dt
+
+
+
 def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None):
     # Main driver function of the datalake access and QC functions, called from the main driver of the codeset.
     import glob
@@ -284,7 +310,9 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     ver = access[col]['Ver']
     cy = wateryear() # Determine wateryear to build file path
     if startDate is None:
-        CE = Fast_Read(glob.glob(CEF),1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+        aggregated_file = get_latest_file(glob.glob(CEF))
+
+        CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
         s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
         s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
         #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
@@ -331,7 +359,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        #AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
+        AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE

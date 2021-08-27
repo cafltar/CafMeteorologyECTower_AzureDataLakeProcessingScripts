@@ -16,16 +16,16 @@ import AzureDataLakeAccess as ADLA
 def TowerReport(pathToAggregatedFiles):
     print('Reading Cook East') # Need to redo for the right local file
     filenames = glob.glob(pathToAggregatedFiles + '\\CookEast\\Flux\\CookEast*Flux*.csv')
-    CE = ADLA.Fast_Read(filenames, 1, '30T')
+    CE = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30T')
     print('Reading Cook West')
     filenames = glob.glob(pathToAggregatedFiles + '\\CookWest\\Flux\\CookWest*Flux*.csv')
-    CW = ADLA.Fast_Read(filenames, 1, '30T')
+    CW = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30T')
     print('Reading Boyd North')
     filenames = glob.glob(pathToAggregatedFiles + '\\BoydNorth\\Flux\\BoydNorth*Flux*.csv')
-    BN = ADLA.Fast_Read(filenames, 1, '30T')
+    BN = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30T')
     print('Reading Boyd South')
     filenames = glob.glob(pathToAggregatedFiles + '\\BoydSouth\\Flux\\BoydSouth*Flux*.csv')
-    BS = ADLA.Fast_Read(filenames,1, '30T')
+    BS = ADLA.Fast_Read([ADLA.get_latest_file(filenames)],1, '30T')
 
     print('Making Plots')
     s = CE.index[-1] - datetime.timedelta(days = +10)
