@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jun  1 10:59:51 2020
+Modified on ... look at git commit log, you lazy bum
 @author: Eric Russell, Assistant Research Professor, CEE WSU
+@author: Bryan Carlson, Ecoinformaticist, USDA-ARS
 contact: eric.s.russell@wsu.edu
 Library of functions for the Azure Data Lake download codeset; see the readme within this repo for more details about the different scripts used
 Comments in this are specific to the functions
@@ -322,7 +324,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
         fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today+'.csv' # Build filename for uploaded file based on tyrannical data manager's specifications
-        fpath = access[col]["outputPath"] + '\\' + Sites + '\\' + fname
+        fpath = access[col]["outputPath"] + '\\' + Sites + '\\' + col + '\\' + fname
         
         CE.to_csv(fpath, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
 
