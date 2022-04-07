@@ -1,3 +1,4 @@
 .secret
 data
 __pycache__
+.vscode

@@ -142,34 +142,40 @@ def download_data_from_datalake(access, s, col, siteName):
     date_inc = datetime.date(s.year, s.month, 1)
 
     while date_inc <= today:
+        
         paths = file_system_client.get_paths(f'{access_path}{date_inc.year:04d}/{date_inc.month:02d}')
+        
+        try:
+            for path in paths:
+                
+                    # This gets all files for month; need to only download after specified day
+                    z = path.name 
+                    #Y = z[-19:-15]; M = z[-14:-12]; D = z[-11:-9]
+                    #bd = datetime.date(int(Y), int(M), int(D))  
 
-        for path in paths:
-            # This gets all files for month; need to only download after specified day
-            z = path.name 
-            #Y = z[-19:-15]; M = z[-14:-12]; D = z[-11:-9]
-            #bd = datetime.date(int(Y), int(M), int(D))  
-
-            date_components = z.split('/')[-1].split('_')[3:6]
-            bd = datetime.date(
-                int(date_components[0]), 
-                int(date_components[1]), 
-                int(date_components[2]))
-                     
-            if (bd >= s) & (bd<=today):
-                # If dates are within the correct range, downloads the file to the local directory
-                #local_file = open(localfile+z[back:],'wb'); print(local_file)                
-                filePath = localfile / pathlib.Path(z).name
-                if not filePath.is_file():
-                    local_file = open(filePath, 'wb')
-                    print(str(filePath))
-                    file_client = file_system_client.get_file_client(z)
-                    download = file_client.download_file()
-                    downloaded_bytes = download.readall()
-                    local_file.write(downloaded_bytes)
-                    local_file.close()
-                else:
-                    print(f'Skipping {filePath}')
+                    date_components = z.split('/')[-1].split('_')[3:6]
+                    bd = datetime.date(
+                        int(date_components[0]), 
+                        int(date_components[1]), 
+                        int(date_components[2]))
+                            
+                    if (bd >= s) & (bd<=today):
+                        # If dates are within the correct range, downloads the file to the local directory
+                        #local_file = open(localfile+z[back:],'wb'); print(local_file)                
+                        filePath = localfile / pathlib.Path(z).name
+                        if not filePath.is_file():
+                            local_file = open(filePath, 'wb')
+                            print(str(filePath))
+                            file_client = file_system_client.get_file_client(z)
+                            download = file_client.download_file()
+                            downloaded_bytes = download.readall()
+                            local_file.write(downloaded_bytes)
+                            local_file.close()
+                        else:
+                            print(f'Skipping {filePath}')
+        except Exception as e:
+            print(e)
+            pass
 
         date_inc = date_inc + relativedelta(months=1)
 
@@ -512,7 +518,7 @@ def Met_QAQC(**kwargs):
         Q['RH_Change'] = (np.abs(Q[RH.columns[0]].astype(float).diff() <= 50)) & (np.abs(Q[RH.columns[0]].diff() != 0))
         Q['RH_Day_Change'] = (RH.resample('D').mean().diff !=0)  
         Q['RH_Filtered'] = Q[RH.columns[0]][Q['RH_Hard_Limit']&Q['RH_Change']& Q['RH_Day_Change']]
-        Q['RH_Filtered'] = Q['RH_Filtered'].replace(to_replace=Q['RH_Filtered'][Q['RH_gt_100']], value = 100)
+        Q['RH_Filtered'] = Q['RH_Filtered'].replace(to_replace=Q['RH_Filtered'][Q['RH_gt_100']].tolist(), value = 100)
 #        Q['RH_Filtered'][Q['RH_gt_100']]=100
         Q.drop(columns=[RH.columns[0]],inplace=True)
 
@@ -607,21 +613,21 @@ def Met_QAQC(**kwargs):
             Q['Precip_RH_gt_90'] = (Q[Precip.columns[0]].astype(float) > 0) & (Q['RH_Filtered'].astype(float) >= 90)
             Q['Precip_Tair_lt_Zero'] = (Q[Precip.columns[0]].astype(float) > 0) & (Q['Tair_Filtered'] < 0)
             Q['Precip_Filtered'] = Q[Precip.columns[0]][Q['Precip_Hard_Limit']&Q['Precip_RH_gt_90']&~Q['Precip_Tair_lt_Zero']]
-            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip], value = 0)
+            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip].tolist(), value = 0)
             Q.drop(columns=[Precip.columns[0]],inplace=True)
         elif ('RH' in kwargs.keys()) & ('Tair' not in kwargs.keys()):
             Q['Precip_RH_gt_90'] = (Q[Precip.columns[0]].astype(float) > 0) & (Q['RH_Filtered'].astype(float) >= 90)
             Q['Precip_Filtered'] = Q[Precip.columns[0]][Q['Precip_Hard_Limit']&Q['Precip_RH']]
-            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip], value = 0)
+            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip].tolist(), value = 0)
             Q.drop(columns=[Precip.columns[0]],inplace=True)
         elif ('RH' not in kwargs.keys()) & ('Tair' in kwargs.keys()):
             Q['Precip_Tair_lt_Zero'] = (Q[Precip.columns[0]].astype(float) > 0) & (Q['Tair_Filtered'] < 0)
             Q['Precip_Filtered'] = Q[Precip.columns[0]][Q['Precip_Hard_Limit']& ~Q['Precip_Tair_lt_Zero']]
-            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip], value = 0)
+            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip].tolist(), value = 0)
             Q.drop(columns=[Precip.columns[0]],inplace=True)
         else:
             Q['Precip_Filtered'] = Q[Precip.columns[0]][Q['Precip_Hard_Limit']]
-            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip], value = 0)
+            Q['Precip_Filtered'] = Q['Precip_Filtered'].replace(to_replace=Q['Precip_Filtered'][Z_Precip].tolist(), value = 0)
             Q.drop(columns=[Precip.columns[0]],inplace=True)
     else:
         print('**** Precipitation not present ****')

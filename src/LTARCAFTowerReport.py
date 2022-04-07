@@ -25,11 +25,7 @@ DataTables = [flux, met]
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
 Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
-
 #S_V = ['40826','40826','18329','18329']
-
-#Sites = ['BoydNorth', 'BoydSouth']
-#S_V = ['18329','18329']
 
 # Get path to config file, assume cwd is at root project level
 cwd = pathlib.Path.cwd()
@@ -53,7 +49,7 @@ for dataTable in DataTables:
 
     for k in range (0,len(Sites)):
         # Different file structure and output locations for the different sites
-        access = pd.read_excel(configPath, sheet_name =Sites[k],index_col = 'Variable')
+        access = pd.read_excel(configPath, sheet_name =Sites[k],index_col = 'Variable').to_dict()
 
         # Add path information to access
         access[col]["inputPath"] = str(inputPath)
