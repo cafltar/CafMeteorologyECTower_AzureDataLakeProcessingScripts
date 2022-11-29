@@ -13,7 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 #os.chdir(r'C:\Users\russe\Documents\GitHub\AzureECTowerAccess')       
 import AzureDataLakeAccess as ADLA
 #%%
-def TowerReport(pathToAggregatedFiles):
+def TowerReport(pathToAggregatedFiles, startdate = None, enddate = None):
     print('Reading Cook East') # Need to redo for the right local file
     filenames = glob.glob(pathToAggregatedFiles + '\\CookEast\\Flux\\CookEast*Flux*.csv')
     CE = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30T')
@@ -27,6 +27,16 @@ def TowerReport(pathToAggregatedFiles):
     filenames = glob.glob(pathToAggregatedFiles + '\\BoydSouth\\Flux\\BoydSouth*Flux*.csv')
     BS = ADLA.Fast_Read([ADLA.get_latest_file(filenames)],1, '30T')
 
+    if startdate != None:
+        CE = CE[CE.index > startdate]
+        CW = CW[CW.index > startdate]
+        BN = BN[BN.index > startdate]
+        BS = BS[BS.index > startdate]
+    if enddate != None:
+        CE = CE[CE.index < enddate]
+        CW = CW[CW.index < enddate]
+        BN = BN[BN.index < enddate]
+        BS = BS[BS.index < enddate]
     print('Making Plots')
     s = CE.index[-1] - datetime.timedelta(days = +10)
     e = CE.index[-1]
