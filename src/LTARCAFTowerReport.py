@@ -23,13 +23,13 @@ import pathlib
 flux = {'col': 'Flux', 'Time': '30T'}
 met = {'col': 'Met', 'Time': '15T'}
 
-DataTables = [flux, met]
-#DataTables = [flux]
+#DataTables = [flux, met]
+DataTables = [flux]
 
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
-Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
-#Sites = ['BoydNorth', 'BoydSouth']
+#Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
+Sites = ['CookEast']
 #S_V = ['40826','40826','18329','18329']
 
 # Get path to config file, assume cwd is at root project level

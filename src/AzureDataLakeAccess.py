@@ -16,6 +16,10 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 
+import glob
+import datetime
+#from datetime import date
+
 def format_plot(ax,yf,xf,xminor,yminor,yl,yu,xl,xu):
     #subplot has to have ax as the axis handle
     # Does not accept blank arguments within the function call; needs to be a number of some sort even if just a 0.
@@ -101,7 +105,7 @@ def Fast_Read(filenames, hdr, idxfll, specified_dtypes = None):
         Out = Out.sort_index()
     return Out # Return dataframe to main function.    
 
-def download_data_from_datalake(access, s, col, siteName):
+def download_data_from_datalake(access, s, col, siteName, endDate:datetime.date=None):
     # Import libraries needed to connect and credential to the data lake.
     from azure.storage.filedatalake import DataLakeServiceClient
     from azure.identity import ClientSecretCredential
@@ -110,8 +114,12 @@ def download_data_from_datalake(access, s, col, siteName):
     from dateutil.relativedelta import relativedelta
     import pathlib
 
+    end_date = date.today()
+    if endDate:
+        end_date = endDate
+        
     # Get today's date
-    today = date.today()
+    #today = date.today()
 
     # Pull the access information from the driver Excel workbook for the datalake in question
     storage_account_name =  access[col]['storageaccountname']
@@ -141,7 +149,7 @@ def download_data_from_datalake(access, s, col, siteName):
 
     date_inc = datetime.date(s.year, s.month, 1)
 
-    while date_inc <= today:
+    while date_inc <= end_date:
         
         paths = file_system_client.get_paths(f'{access_path}{date_inc.year:04d}/{date_inc.month:02d}')
         
@@ -159,7 +167,7 @@ def download_data_from_datalake(access, s, col, siteName):
                         int(date_components[1]), 
                         int(date_components[2]))
                             
-                    if (bd >= s) & (bd<=today):
+                    if (bd >= s) & (bd<=end_date):
                         # If dates are within the correct range, downloads the file to the local directory
                         #local_file = open(localfile+z[back:],'wb'); print(local_file)                
                         filePath = localfile / pathlib.Path(z).name
@@ -271,13 +279,13 @@ def Data_Update_Azure(access, s,col, siteName):
                 path = access[col]['path'] # Print path name of files downloaded for user to look at it and admire.
         year = year+1
         
-def wateryear():
+def wateryear(calendar_date:datetime.date = datetime.date.today()):
     # Calculate what the wateryear is; checks if it is Ooctober or not; if so then adds one to the year to get to the correct water year. 
-    from datetime import date
-    if int(str(date.today()).replace('-','')[4:6]) < 10:
-        wateryear = str(date.today()).replace('-','')[0:4]
+
+    if int(str(calendar_date).replace('-','')[4:6]) < 10:
+        wateryear = str(calendar_date).replace('-','')[0:4]
     else:
-        wateryear = str(int(str(date.today()).replace('-','')[0:4])+1)
+        wateryear = str(int(str(calendar_date).replace('-','')[0:4])+1)
     return wateryear # Returns water year as a string.
 
 def get_latest_file(files):
@@ -304,9 +312,31 @@ def get_datetime_from_filename(filestring:str):
     return dt
 
 
+def get_latest_date_from_file(col, Time, CEF):
+    aggregated_file = get_latest_file(glob.glob(CEF))
 
-def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None):
+    CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+    s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
+    s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
+
+    return s
+
+def get_last_date_of_wateryear(wateryear:int):
+    dt = datetime.date(wateryear, 9, 30)
+
+    return dt
+
+def get_first_date_of_wateryear(wateryear:int):
+    dt = datetime.date(wateryear, 10, 1)
+
+    return dt
+
+def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=None,endDate:str=None):
     # Main driver function of the datalake access and QC functions, called from the main driver of the codeset.
+    # If startDate defined but endDate=None: Downloads blobs from startDate to current date or to end of startDate's water year, if current date is later
+    # If endDate defined but startDate=None: Searches for a file in the output folder (previously aggregated) and downloads files from the last date in the file (or from the endDate's water year, if file's date is earlier) until reaching endDate
+    # If startDate and endDate defined: Downloads files between startDate and endDate as long as within same water year
+    # If startDate=None and endDate=None: Searches for a file in the output folder (previously aggregated) and downloads files from the last date in the file (or from the endDate's water year, if file's date is earlier) to current date or to end of startDate's water year, if current date is later
     import glob
     import datetime
     import pandas as pd
@@ -314,21 +344,93 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
     from dateutil import parser
     # Collect which column, met or flux
     ver = access[col]['Ver']
-    cy = wateryear() # Determine wateryear to build file path
-    if startDate is None:
-        aggregated_file = get_latest_file(glob.glob(CEF))
+    #cy = wateryear() # Determine wateryear to build file path
 
-        CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
-        s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
-        s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
-        #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
-        #    s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
-        #else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
-    else: s = parser.parse(startDate).date()
+    curr_date = date.today()
+
+    if startDate and (endDate is None):
+        # Downloads blobs from startDate to current date or to end of startDate's water year, if current date is later
+        print("WARNING: This chunk of code has not been fully tested")
+
+        start_date = parser.parse(startDate).date()
+        start_date_wateryear = wateryear(start_date)
+
+        current_wateryear = wateryear(curr_date)
+        
+        if current_wateryear is start_date_wateryear:
+            end_date = curr_date
+        else:
+            end_date = get_last_date_of_wateryear(int(start_date_wateryear))
+
+    elif (startDate is None) and endDate:
+        # Searches for a file in the output folder (previously aggregated) and downloads files from 
+        # the last date in the file (or from the endDate's water year, if file's date is earlier) until reaching endDate
+        print("WARNING: This chunk of code has not been fully tested")
+
+        end_date = parser.parse(endDate).date()
+        end_date_wateryear = wateryear(end_date)
+
+        # Throws an error if there are no files
+        try:
+            start_date = get_latest_date_from_file(col, Time, CEF)
+        except:
+            # Threw an error, assume no files in output folder so get first date of the water year
+            start_date = get_first_date_of_wateryear(int(end_date_wateryear))
+        else:
+            start_date_wateryear = wateryear(start_date)
+
+        if start_date_wateryear != end_date_wateryear:
+            start_date = get_first_date_of_wateryear(int(end_date_wateryear))
+
+    elif startDate and endDate:
+        # Downloads files between startDate and endDate as long as within same water year
+        start_date = parser.parse(startDate).date()
+        end_date = parser.parse(endDate).date()
+
+        start_date_wateryear = wateryear(start_date)
+        end_date_wateryear = wateryear(end_date)
+
+        if start_date_wateryear != end_date_wateryear:
+            raise Exception ("The given dates are of different water years, this goes against the scripts prime assumptions and may cause your computer to explode. Reconsider your inputs.")
+
+    elif (startDate is None) and (endDate is None):
+        # If startDate=None and endDate=None: Searches for a file in the output folder (previously aggregated) 
+        # and downloads files from the last date in the file (or from the endDate's water year, if file's date 
+        # is earlier) to current date or to end of startDate's water year, if current date is later
+
+        current_wateryear = wateryear(curr_date)
+
+        try:
+            start_date = get_latest_date_from_file(col, Time, CEF)
+        except:
+            # Threw an error, assume no files in output folder so get first date of the current water year
+            start_date = get_first_date_of_wateryear(int(current_wateryear))
+            end_date = curr_date
+        else:
+            start_date_wateryear = wateryear(start_date)
+
+            if current_wateryear is start_date_wateryear:
+                end_date = curr_date
+            else:
+                end_date = get_last_date_of_wateryear(int(start_date_wateryear))
+
+    else:
+        raise Exception("Script does not know how to proceed with the arguments given. Aborting...")
+
+#    if startDate is None:
+#        aggregated_file = get_latest_file(glob.glob(CEF))
+#
+#        CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+#        s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
+#        s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
+#        #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
+#        #    s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
+#        #else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
+#    else: s = parser.parse(startDate).date()
     
     print('Downloading files')
     # Call function to update the Azure data
-    download_data_from_datalake(access, s, col, Sites)
+    download_data_from_datalake(access, start_date, col, Sites, end_date)
 
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
@@ -354,10 +456,11 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
             CE = METQC(CE, col) # Calls met QC function; flux data includes met data hence extra call.
     if save == True:
         print('Saving Data') 
+        file_wateryear = wateryear(end_date) # assuming end and start dates are the same
         #CEF = (CEF[:-4]+tag).replace('*','') # replace wildcards that were used for glob
         
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
-        fname = Sites+'_'+col+'_AggregateQC_CY'+cy+'_'+ver+'_'+today+'.csv' # Build filename for uploaded file based on tyrannical data manager's specifications
+        fname = Sites+'_'+col+'_AggregateQC_CY'+file_wateryear+'_'+ver+'_'+today+'.csv' # Build filename for uploaded file based on tyrannical data manager's specifications
         fpath = access[col]["outputPath"] + '\\' + Sites + '\\' + col + '\\' + fname
         
         CE.to_csv(fpath, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
@@ -365,7 +468,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate=None)
         print('Uploading data')
         
         # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
-        AggregatedUploadAzure(fname, access, col,fpath,cy) # Send info to upload function
+        AggregatedUploadAzure(fname, access, col,fpath,file_wateryear) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
