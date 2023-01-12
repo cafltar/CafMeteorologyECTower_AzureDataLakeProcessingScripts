@@ -327,7 +327,7 @@ def get_last_date_of_wateryear(wateryear:int):
     return dt
 
 def get_first_date_of_wateryear(wateryear:int):
-    dt = datetime.date(wateryear, 10, 1)
+    dt = datetime.date(wateryear-1, 10, 1)
 
     return dt
 
@@ -417,20 +417,28 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
     else:
         raise Exception("Script does not know how to proceed with the arguments given. Aborting...")
 
-#    if startDate is None:
-#        aggregated_file = get_latest_file(glob.glob(CEF))
-#
-#        CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+    if startDate is None:
+        # No start date, so assume we're working off of a previously aggregated file. Catch exception in case we're starting a fresh water year
+        try:
+            aggregated_file = get_latest_file(glob.glob(CEF))
+        except:
+            # Starting a fresh water year, so don't start a day before last data record
+            s = start_date
+        else:
+            # We have previous data so read it
+            CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+            s = start_date - datetime.timedelta(days=1)
 #        s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
 #        s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
-#        #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
-#        #    s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
-#        #else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
+        #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
+        #    s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])-1)
+        #else: s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:]))
 #    else: s = parser.parse(startDate).date()
+    
     
     print('Downloading files')
     # Call function to update the Azure data
-    download_data_from_datalake(access, start_date, col, Sites, end_date)
+    download_data_from_datalake(access, s, col, Sites, end_date)
 
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
@@ -461,6 +469,10 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
         
         today = str(date.today()).replace('-','') # Replace dashes within datestring to make one continuous string
         fname = Sites+'_'+col+'_AggregateQC_CY'+file_wateryear+'_'+ver+'_'+today+'.csv' # Build filename for uploaded file based on tyrannical data manager's specifications
+        dpath = access[col]["outputPath"] + '\\' + Sites + '\\' + col
+        if not os.path.exists(dpath):
+            os.makedirs(dpath)
+            
         fpath = access[col]["outputPath"] + '\\' + Sites + '\\' + col + '\\' + fname
         
         CE.to_csv(fpath, index_label = 'TIMESTAMP') # Print new aggregated file to local machine for local copy
