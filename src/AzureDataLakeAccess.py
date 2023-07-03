@@ -348,7 +348,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
 
     curr_date = date.today()
 
-    if startDate and (endDate is None):
+    if startDate and (endDate == None):
         # Downloads blobs from startDate to current date or to end of startDate's water year, if current date is later
         print("WARNING: This chunk of code has not been fully tested")
 
@@ -357,12 +357,12 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
 
         current_wateryear = wateryear(curr_date)
         
-        if current_wateryear is start_date_wateryear:
+        if current_wateryear == start_date_wateryear:
             end_date = curr_date
         else:
             end_date = get_last_date_of_wateryear(int(start_date_wateryear))
 
-    elif (startDate is None) and endDate:
+    elif (startDate == None) and endDate:
         # Searches for a file in the output folder (previously aggregated) and downloads files from 
         # the last date in the file (or from the endDate's water year, if file's date is earlier) until reaching endDate
         print("WARNING: This chunk of code has not been fully tested")
@@ -393,7 +393,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
         if start_date_wateryear != end_date_wateryear:
             raise Exception ("The given dates are of different water years, this goes against the scripts prime assumptions and may cause your computer to explode. Reconsider your inputs.")
 
-    elif (startDate is None) and (endDate is None):
+    elif (startDate == None) and (endDate == None):
         # If startDate=None and endDate=None: Searches for a file in the output folder (previously aggregated) 
         # and downloads files from the last date in the file (or from the endDate's water year, if file's date 
         # is earlier) to current date or to end of startDate's water year, if current date is later
@@ -409,7 +409,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
         else:
             start_date_wateryear = wateryear(start_date)
 
-            if current_wateryear is start_date_wateryear:
+            if current_wateryear == start_date_wateryear:
                 end_date = curr_date
             else:
                 end_date = get_last_date_of_wateryear(int(start_date_wateryear))
@@ -417,17 +417,17 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
     else:
         raise Exception("Script does not know how to proceed with the arguments given. Aborting...")
 
-    if startDate is None:
-        # No start date, so assume we're working off of a previously aggregated file. Catch exception in case we're starting a fresh water year
-        try:
-            aggregated_file = get_latest_file(glob.glob(CEF))
-        except:
-            # Starting a fresh water year, so don't start a day before last data record
-            s = start_date
-        else:
-            # We have previous data so read it
-            CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
-            s = start_date - datetime.timedelta(days=1)
+#    if startDate == None:
+#        # No start date, so assume we're working off of a previously aggregated file. Catch exception in case we're starting a fresh water year
+#        try:
+#            aggregated_file = get_latest_file(glob.glob(CEF))
+#        except:
+#            # Starting a fresh water year, so don't start a day before last data record
+#            s = start_date
+#        else:
+#            # We have previous data so read it
+#            CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+#            s = start_date - datetime.timedelta(days=1)
 #        s = str(CE.index[-1])[0:10]; s= s.replace('-', '') # Find the last index in the file and convert to a string
 #        s = datetime.date(int(s[0:4]), int(s[4:6]), int(s[6:])) - datetime.timedelta(days=1)
         #if int(s[6:])>1: # Check if it is the first day of the month or not to go back a day for the file collection later.
@@ -438,7 +438,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
     
     print('Downloading files')
     # Call function to update the Azure data
-    download_data_from_datalake(access, s, col, Sites, end_date)
+    download_data_from_datalake(access, start_date, col, Sites, end_date)
 
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
