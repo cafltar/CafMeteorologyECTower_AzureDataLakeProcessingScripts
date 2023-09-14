@@ -25,13 +25,11 @@ met = {'col': 'Met', 'Time': '15T'}
 
 DataTables = [flux, met]
 #DataTables = [flux]
-#DataTables = [met]
 
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
 Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
-#Sites = ['CookEast','CookWest']
-#Sites = ['BoydNorth', 'BoydSouth']
+#Sites = ['CookWest','BoydNorth', 'BoydSouth']
 #S_V = ['40826','40826','18329','18329']
 
 # Get path to config file, assume cwd is at root project level

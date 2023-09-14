@@ -417,6 +417,13 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
     else:
         raise Exception("Script does not know how to proceed with the arguments given. Aborting...")
 
+    if startDate == None:
+        # No start date, so assume we're working off of a previously aggregated file. Grab data from that file
+        try:
+            aggregated_file = get_latest_file(glob.glob(CEF))
+            CE = Fast_Read([aggregated_file],1, Time, get_dtypes(f'{col}Aggregated')) # Read in the previous aggregated file(s)
+        except Exception as e: print(e)
+
 #    if startDate == None:
 #        # No start date, so assume we're working off of a previously aggregated file. Catch exception in case we're starting a fresh water year
 #        try:
@@ -479,7 +486,6 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
 
         print('Uploading data')
         
-        # TODO: Enable uploading to DL soon (removed during testing 01/27/2021 by brc)
         AggregatedUploadAzure(fname, access, col,fpath,file_wateryear) # Send info to upload function
     for f in filenames:
         os.remove(f)   # Delete downloaded files on local machines as no longer needed
