@@ -29,6 +29,7 @@ DataTables = [flux, met]
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
 Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
+#Sites = ['CookEast','CookWest'] # Name of the sites wanted; can be as many as want but must be within square brackets
 #Sites = ['CookWest','BoydNorth', 'BoydSouth']
 #S_V = ['40826','40826','18329','18329']
 
@@ -76,7 +77,7 @@ for dataTable in DataTables:
         # Can add the save and date options if want them to be different than the default
         
         df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
-        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True, startDate="2022-10-01")
+        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True, startDate="2022-10-01", endDate="2023-09-30")
 
     if col =='Flux':
         TRP.TowerReport(str(outputPath))

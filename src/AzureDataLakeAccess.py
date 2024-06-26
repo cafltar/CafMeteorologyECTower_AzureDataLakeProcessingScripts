@@ -51,7 +51,7 @@ def indx_fill(df_in, frq):
     df['nan_count'] = pd.isna(df).sum(1)
     df = df.sort_values(['RECORD', 'nan_count']) # Can sort on RECORD here because values with null/na index were previously removed
     df = df[~df.index.duplicated(keep='first')]
-    df = df.drop('nan_count',1).sort_index()
+    df = df.drop('nan_count',axis=1).sort_index()
 
         # Fill in missing times due to tower being down and pad dataframe to midnight of the first and last day
     idx = pd.date_range(df.index[0].floor('D'),df.index[len(df.index)-1].ceil('D'),freq = frq)
