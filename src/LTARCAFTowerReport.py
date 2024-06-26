@@ -16,12 +16,12 @@ import TowerReportPlots as TRP
 import pathlib
 
 # Change only these things; are the controls to the script that are not within the set-up excel file
-#Time = '30T' # Timestamp of the datafile
+#Time = '30min' # Timestamp of the datafile
 #col = 'Flux' # Column for the different paths between Flux or Met
 #tag = '_AGCY2021Update.csv' # End tag of the file to be saved; added to the end of CEF varaible below
 
-flux = {'col': 'Flux', 'Time': '30T'}
-met = {'col': 'Met', 'Time': '15T'}
+flux = {'col': 'Flux', 'Time': '30min'}
+met = {'col': 'Met', 'Time': '15min'}
 
 DataTables = [flux, met]
 #DataTables = [flux]

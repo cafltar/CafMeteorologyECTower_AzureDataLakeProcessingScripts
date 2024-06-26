@@ -531,7 +531,7 @@ def readinfo(access):
 def Grade_cs(data,access):
     # Basic flux qc function; more serious codeset not included.
     grade, LE_B, H_B, F_B, ustar,col,gg = readinfo(access)
-    pd.options.mode.chained_assignment = None # Don't remember exactly why this is here; probably to avoid a warning statement somewhere 
+    #pd.options.mode.chained_assignment = None # Don't remember exactly why this is here; probably to avoid a warning statement somewhere 
     if (grade >9) | (grade<1): # Check that the grade value falls within acceptable bounds
         print('Grade number must be between 1-9.')
         return  # 'exit' function and return error 
@@ -553,44 +553,61 @@ def Grade_cs(data,access):
             HL = (df[col[2]].astype(float) < F_B[0])|(df[col[2]].astype(float) > F_B[1])| df[col[2]].astype(float).isnull()
         data[(col[k]+'_Graded')] = data[col[k]] # Create the flux graded column
         data[var[k]] = '0'
-        data[var[k]][HL] = '1' # Start building the flag values
+        #data[var[k]][HL] = '1' # Start building the flag values
+        data.loc[HL, var[k]] = '1'
         #QA/QC grade for data       
         Grade = df[gg[k]].astype(float) <= grade # Check flux again the developed turbulence grades
-        data[var[k]][~Grade] = data[var[k]]+'1'
-        data[var[k]][Grade] = data[var[k]]+'0'# add to the data flag
+        #data[var[k]][~Grade] = data[var[k]]+'1'
+        data.loc[~Grade, var[k]] = data[var[k]]+'1'
+
+        #data[var[k]][Grade] = data[var[k]]+'0'# add to the data flag
+        data.loc[Grade, var[k]] = data[var[k]]+'0'
         # values for columns hardcoded assuming they do not change for the EasyFlux code; will need to be updated if column names change
         if 'Precipitation_Tot' in df.columns: # Check if recorded precip or not; if so, filter fluxes
             Precip = df['Precipitation_Tot'].astype(float) < 0.001
-            data[var[k]][~Precip] = data[var[k]]+'1'
-            data[var[k]][Precip] = data[var[k]]+'0'
+            #data[var[k]][~Precip] = data[var[k]]+'1'
+            data.loc[~Precip, var[k]] = data[var[k]]+'1'
+            #data[var[k]][Precip] = data[var[k]]+'0'
+            data.loc[Precip, var[k]] = data[var[k]]+'0'
         #10Hz sample Mask                  
         if 'CO2_sig_strgth_Min' in df.columns: # Check is co2 sig strength is high enough
             c_sig_strength = df['CO2_sig_strgth_Min'].astype(float) > 0.7
-            data[var[k]][c_sig_strength] = data[var[k]]+'0'
-            data[var[k]][~c_sig_strength] = data[var[k]]+'1'
+            #data[var[k]][c_sig_strength] = data[var[k]]+'0'
+            #data[var[k]][~c_sig_strength] = data[var[k]]+'1'
+            data.loc[c_sig_strength, var[k]] = data[var[k]] + '0'
+            data.loc[~c_sig_strength, var[k]] = data[var[k]] + '1'
         if 'H2O_sig_strgth_Min' in df.columns: # Check if h20 sig strength is high enough
             w_sig_strength = df['H2O_sig_strgth_Min'].astype(float) > 0.7
-            data[var[k]][w_sig_strength] = data[var[k]]+'0'
-            data[var[k]][~w_sig_strength] = data[var[k]]+'1'
+            #data[var[k]][w_sig_strength] = data[var[k]]+'0'
+            #data[var[k]][~w_sig_strength] = data[var[k]]+'1'
+            data.loc[w_sig_strength, var[k]] = data[var[k]] + '0'
+            data.loc[~w_sig_strength, var[k]] = data[var[k]] + '1'
         if 'sonic_samples_Tot' in df.columns: # Check if enough samples in the sonic column (80% coverage); 
             Samp_Good_Sonic = df['sonic_samples_Tot'].astype(float) > 14400 
-            data[var[k]][~Samp_Good_Sonic] =data[var[k]]+'1'
-            data[var[k]][Samp_Good_Sonic] = data[var[k]]+'0'
+            #data[var[k]][~Samp_Good_Sonic] =data[var[k]]+'1'
+            #data[var[k]][Samp_Good_Sonic] = data[var[k]]+'0'
+            data.loc[~Samp_Good_Sonic, var[k]] = data[var[k]] + '1'
+            data.loc[Samp_Good_Sonic, var[k]] = data[var[k]] + '0'
         if 'Fc_samples_Tot' in df.columns: # Check if enough samples in Fc column (80%) coverage
             Samp_Good_IRGA = df['Fc_samples_Tot'].astype(float)>14400
-            data[var[k]][~Samp_Good_IRGA] = data[var[k]]+'1'
-            data[var[k]][Samp_Good_IRGA] = data[var[k]]+'0'
+            #data[var[k]][~Samp_Good_IRGA] = data[var[k]]+'1'
+            #data[var[k]][Samp_Good_IRGA] = data[var[k]]+'0'
+            data.loc[~Samp_Good_IRGA, var[k]] = data[var[k]] + '1'
+            data.loc[Samp_Good_IRGA, var[k]] = data[var[k]] + '0'
         #Door Open Mask
         if 'door_is_open_Hst' in df.columns: # Check if door open meaning people at the site doing work
             Door_Closed = df['door_is_open_Hst'].astype(float) == 0
-            data[var[k]][~Door_Closed] = data[var[k]]+'1'
-            data[var[k]][Door_Closed] = data[var[k]]+'0'    
+            #data[var[k]][~Door_Closed] = data[var[k]]+'1'
+            #data[var[k]][Door_Closed] = data[var[k]]+'0'   
+            data.loc[~Door_Closed, var[k]] = data[var[k]] + '1'
+            data.loc[Door_Closed, var[k]] = data[var[k]] + '0' 
             Good = Precip & Grade & Door_Closed&~HL&c_sig_strength&w_sig_strength # Create single boolean from all the qc checks; only one fail will trigger fail
             Good = Good & (Samp_Good_Sonic | Samp_Good_IRGA) 
         else: # If door open is not part of the column set; should be with the logger data
             Good = Grade &~HL
             Good = Good & (Samp_Good_Sonic | Samp_Good_IRGA)
-        data[(col[k]+'_Graded')][~Good] = np.NaN # Create column with nan/blank in the column if data is bad/filtered
+        #data[(col[k]+'_Graded')][~Good] = np.NaN # Create column with nan/blank in the column if data is bad/filtered
+        data.loc[~Good, (col[k]+'_Graded')] = np.NaN
         if k == 0: G = Good; 
         if k >0: G = pd.concat([G,Good],axis=1, sort = False)
         del Good # Delete Good variable for the next round of flux data.
