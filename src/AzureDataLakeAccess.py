@@ -445,7 +445,9 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
     
     print('Downloading files')
     # Call function to update the Azure data
-    download_data_from_datalake(access, start_date, col, Sites, end_date)
+
+    #TODO 2024-08-09: Remove comments before deploying code
+    # download_data_from_datalake(access, start_date, col, Sites, end_date)
 
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):

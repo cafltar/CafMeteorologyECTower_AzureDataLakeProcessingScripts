@@ -2,10 +2,11 @@
 """
 Created on Mon Mar  5 11:37:05 2018
 
-Updated: 2022-04-27
+Updated: 2024-
 
 @author: Eric Russell 
 @author: Bryan Carlson
+@author: Eddie Steiner
 """
 import os
 import pandas as pd
@@ -23,12 +24,17 @@ import pathlib
 flux = {'col': 'Flux', 'Time': '30min'}
 met = {'col': 'Met', 'Time': '15min'}
 
-DataTables = [flux, met]
-#DataTables = [flux]
+#TODO 2024-08-09: Remove comments before deploying code
+#DataTables = [flux, met]
+
+#TODO 2024-08-09: Comment/remove this before deploying code
+DataTables = [flux]
 
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
+
 Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
+
 #Sites = ['CookEast','CookWest'] # Name of the sites wanted; can be as many as want but must be within square brackets
 #Sites = ['CookWest','BoydNorth', 'BoydSouth']
 #S_V = ['40826','40826','18329','18329']
@@ -76,8 +82,12 @@ for dataTable in DataTables:
         # Calls the function that access the Azure data lake using the options given in the first section. 
         # Can add the save and date options if want them to be different than the default
         
-        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
-        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True, startDate="2022-10-01", endDate="2023-09-30")
+        #TODO 2024-08-09: Comment/remove this before deploying code
+        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True, startDate="2024-08-07", endDate="2024-08-09")
+        
+        #TODO 2024-08-09: Remove comments before deploying code
+        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
+        
 
     if col =='Flux':
         TRP.TowerReport(str(outputPath))
