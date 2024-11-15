@@ -3,479 +3,159 @@
 Created on Thu Jul  9 15:55:41 2020
 
 @author: russe
+@author: Eddie Steiner
 """
+
+
+
 import glob
-import os 
+import os
 import matplotlib.pyplot as plt
 import datetime
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
-#os.chdir(r'C:\Users\russe\Documents\GitHub\AzureECTowerAccess')       
 import AzureDataLakeAccess as ADLA
-#%%
-def TowerReport(pathToAggregatedFiles, startdate = None, enddate = None):
-    print('Reading Cook East') # Need to redo for the right local file
-    filenames = glob.glob(pathToAggregatedFiles + '\\CookEast\\Flux\\CookEast*Flux*.csv')
-    CE = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30min')
-    print('Reading Cook West')
-    filenames = glob.glob(pathToAggregatedFiles + '\\CookWest\\Flux\\CookWest*Flux*.csv')
-    CW = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30min')
-    print('Reading Boyd North')
-    filenames = glob.glob(pathToAggregatedFiles + '\\BoydNorth\\Flux\\BoydNorth*Flux*.csv')
-    BN = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30min')
-    print('Reading Boyd South')
-    filenames = glob.glob(pathToAggregatedFiles + '\\BoydSouth\\Flux\\BoydSouth*Flux*.csv')
-    BS = ADLA.Fast_Read([ADLA.get_latest_file(filenames)],1, '30min')
 
-    if startdate != None:
-        CE = CE[CE.index > startdate]
-        CW = CW[CW.index > startdate]
-        BN = BN[BN.index > startdate]
-        BS = BS[BS.index > startdate]
-    if enddate != None:
-        CE = CE[CE.index < enddate]
-        CW = CW[CW.index < enddate]
-        BN = BN[BN.index < enddate]
-        BS = BS[BS.index < enddate]
-    print('Making Plots')
-    s = CE.index[-1] - datetime.timedelta(days = +10)
-    e = CE.index[-1]
-    CE=CE[s:e]
-    CW=CW[s:e]
-    BN=BN[s:e]
-    BS=BS[s:e]
-    s = str(CE.index[-1] - datetime.timedelta(days = +7))[0:10].replace('-','')
-    e = str(CE.index[-1])[0:10].replace('-','')
-    pdf_pages = PdfPages(r'G:\Shared drives\CafMeteorologyECTower\Documents\TowerReports\CAFLTARTowerReport'+s+'_'+e+'.pdf')
-    for i in range(1):
+def TowerReport(pathToAggregatedFiles, startdate=None, enddate=None):
+    stations = ['CookEast', 'CookWest', 'BoydNorth', 'BoydSouth']
+    data_frames = {}
+    missing_stations = []
+    invalid_vars = []
+    
+    # Reading data for each station
+    for station in stations:
+        print(f'Reading {station}')
+        filenames = glob.glob(f"{pathToAggregatedFiles}\\{station}\\Flux\\{station}*Flux*.csv")
+        
+        try:
+            data = ADLA.Fast_Read([ADLA.get_latest_file(filenames)], 1, '30min')
+            if data.empty:
+                raise ValueError(f"No data found for {station}")
+            data_frames[station] = data
+        except Exception as e:
+            print(f"Error reading data for {station}: {e}")
+            missing_stations.append(station)
+            continue
+    
+    # Check if any data was successfully read
+    if not data_frames:
+        print("No valid data found for any stations.")
+        return
+    
+    # Filter by startdate and enddate
+    if startdate is not None:
+        for station in data_frames:
+            data_frames[station] = data_frames[station][data_frames[station].index > startdate]
+    if enddate is not None:
+        for station in data_frames:
+            data_frames[station] = data_frames[station][data_frames[station].index < enddate]
+    
+    if missing_stations:
+        print(f"Missing data for the following stations: {', '.join(missing_stations)}")
+    
+    # Assuming at least one valid dataset is present
+    valid_station = next(iter(data_frames))
+    s = data_frames[valid_station].index[-1] - datetime.timedelta(days=+10)
+    e = data_frames[valid_station].index[-1]
+    
+    for station in data_frames:
+        data_frames[station] = data_frames[station][s:e]
+    
+    s = str(data_frames[valid_station].index[-1] - datetime.timedelta(days=+7))[0:10].replace('-', '')
+    e = str(data_frames[valid_station].index[-1])[0:10].replace('-', '')
+    
+    pdf_pages = PdfPages(f'CAFLTARTowerReport{s}_{e}.pdf')
+    
+    # Plotting for each variable group
 
-        fig = plt.figure(2, figsize=(6,8))
-        ax = plt.subplot(311)
-        plt.plot(CE['H'].astype(float), label = 'CE')
-        plt.plot(CW['H'].astype(float), label = 'CW')
-        plt.plot(BN['H'].astype(float), label = 'BN')
-        plt.plot(BS['H'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-100,700,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('H [W m$^{-2}$]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(312)
-        plt.plot(CE['LE'].astype(float), label = 'CE')
-        plt.plot(CW['LE'].astype(float), label = 'CW')
-        plt.plot(BN['LE'].astype(float), label = 'BN')
-        plt.plot(BS['LE'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-100,700,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        ax.axes.xaxis.set_ticklabels([])
-        plt.ylabel('LE [W m$^{-2}$]',fontsize = 12)
-        ax = plt.subplot(313)
-        plt.plot(CE['Fc_molar'].astype(float), label = 'CE')
-        plt.plot(CW['Fc_molar'].astype(float), label = 'CW')
-        plt.plot(BN['Fc_molar'].astype(float), label = 'BN')
-        plt.plot(BS['Fc_molar'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-50,20,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('FC [umol m$^{-2}$s$^{-1}$]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig, orientation = 'portrait' )
-        plt.close()
+    #UPDATE THESE WITH NEW VARIABLES **********************************************************************
+   
+    variable_groups = {
+        "Heat and Energy Fluxes": ['H', 'LE', 'FC_mass'],
+        "Temperature Variables": ['TA_1_1_1', 'TA_1_1_2', 'T_SONIC'],
+        "Humidity and Precipitation": ['RH_1_1_1', 'RH_1_1_3', 'P'],
+        "Wind and Friction": ['USTAR', 'FETCH_90'],
+        "Radiation and Photosynthetically Active Radiation": ['PPFD_IN'],
+        "Wind Components": ['Ux', 'Uy', 'Uz'],
+        "Flux Sample Totals": ['FC_samples', 'LE_samples', 'H_samples'],
+        "Signal Strengths": ['CO2_sig_strgth_Min', 'H2O_sig_strgth_Min'],
+        "Soil Temperature and Water Content (Shallow)": ['TS_TDR31X_1_1_1']
+    }
+
+    #***************************************************************************************************
+
+    for category_label, vars_to_plot in variable_groups.items():
+        fig = plt.figure(figsize=(8, 8)) 
+        figure_plotted = False  # Track if any data is plotted for this figure
         
-        fig = plt.figure(21, figsize=(6,8))
-        ax = plt.subplot(311)
-        plt.plot(CE['amb_tmpr_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['amb_tmpr_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['amb_tmpr_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['amb_tmpr_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-15,35,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('T$_{amb}$ [degC]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(312)
-        plt.plot(CE['T_probe_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['T_probe_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['T_probe_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['T_probe_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-15,35,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        ax.axes.xaxis.set_ticklabels([])
-        plt.ylabel('T$_{probe}$ [degC]',fontsize = 12)
-        ax = plt.subplot(313)
-        plt.plot(CE['Ts_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['Ts_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['Ts_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['Ts_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-15,35,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('T$_{sonic}$ [degC]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig, orientation = 'portrait'  )
-        plt.close()
-    
-        fig = plt.figure(21, figsize=(6,8))
-        ax = plt.subplot(311)
-        plt.plot(CE['amb_tmpr_Avg'].astype(float)/CE['T_probe_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['amb_tmpr_Avg'].astype(float)/CW['T_probe_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['amb_tmpr_Avg'].astype(float)/BN['T_probe_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['amb_tmpr_Avg'].astype(float)/BS['T_probe_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,0,3,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('T$_{amb}$/T$_{probe}$',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(312)
-        plt.plot(CE['T_probe_Avg'].astype(float)/CE['Ts_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['T_probe_Avg'].astype(float)/CW['Ts_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['T_probe_Avg'].astype(float)/BN['Ts_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['T_probe_Avg'].astype(float)/BS['Ts_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,0,3,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        ax.axes.xaxis.set_ticklabels([])
-        plt.ylabel('T$_{probe}$/T$_{sonic}$',fontsize = 12)
-        ax = plt.subplot(313)
-        plt.plot(CE['RH_Avg'].astype(float)/CE['RH_probe_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['RH_Avg'].astype(float)/CW['RH_probe_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['RH_Avg'].astype(float)/BN['RH_probe_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['RH_Avg'].astype(float)/BS['RH_probe_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,0,3,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('RH$_{amb}$/RH$_{probe}$',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig, orientation = 'portrait'  )
-        plt.close()
-    
-    
-        fig = plt.figure(22, figsize=(6,8))
-        ax = plt.subplot(311)
-        plt.plot(CE['RH_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['RH_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['RH_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['RH_Avg'].astype(float).astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-5,105,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('RH$_{amb}$ [degC]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(312)
-        plt.plot(CE['RH_probe_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['RH_probe_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['RH_probe_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['RH_probe_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-5,105,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        ax.axes.xaxis.set_ticklabels([])
-        plt.ylabel('RH$_{probe}$ [degC]',fontsize = 12)
-        ax = plt.subplot(313)
-        plt.plot(CE['Precipitation_Tot'].astype(float), label = 'CE')
-        plt.plot(CW['Precipitation_Tot'].astype(float), label = 'CW')
-        plt.plot(BN['Precipitation_Tot'].astype(float), label = 'BN')
-        plt.plot(BS['Precipitation_Tot'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-0.25,20,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.legend(fontsize = 12)
-        plt.ylabel('Precipitation [mm]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-    
-        fig = plt.figure(23, figsize=(6,8))
-        ax = plt.subplot(211)
-        plt.plot(CE['u_star_R'].astype(float), label = 'CE')
-        plt.plot(CW['u_star_R'].astype(float), label = 'CW')
-        plt.plot(BN['u_star_R'].astype(float), label = 'BN')
-        plt.plot(BS['u_star_R'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-0.1,2,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('u-star [m s$^{-1}$]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(212)
-        plt.plot(CE['FP_90'].astype(float), label = 'CE')
-        plt.plot(CW['FP_90'].astype(float), label = 'CW')
-        plt.plot(BN['FP_90'].astype(float), label = 'BN')
-        plt.plot(BS['FP_90'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-5,300,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('FP$_{90}$ [m]',fontsize = 12)
-        plt.xticks(rotation = 15)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-    
-        fig = plt.figure(24, figsize=(6,8))
-        ax = plt.subplot(211)
-        plt.plot(CE['Rn_meas_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['Rn_meas_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['Rn_meas_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['Rn_meas_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-200,1000,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('Rn [W m$^{-2}$]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(212)
-        plt.plot(CE['PAR_density_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['PAR_density_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['PAR_density_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['PAR_density_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-5,2000,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('PAR',fontsize = 12)
-        plt.xticks(rotation = 15)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-    
-        fig = plt.figure(31, figsize=(6,8))
-        ax = plt.subplot(311)
-        plt.plot(CE['Ux_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['Ux_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['Ux_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['Ux_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-10,10,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12, ncol = 2)
-        plt.ylabel('Ux [m s$^{-1}$]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(312)
-        plt.plot(CE['Uy_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['Uy_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['Uy_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['Uy_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-10,10,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        ax.axes.xaxis.set_ticklabels([])
-        plt.ylabel('Uy [m s$^{-1}$]',fontsize = 12)
-        ax = plt.subplot(313)
-        plt.plot(CE['Uz_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['Uz_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['Uz_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['Uz_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-2,2,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('Uz [m s$^{-1}$]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-    
-        fig = plt.figure(3, figsize=(6,8))
-        ax = plt.subplot(311)
-        plt.plot(CE['Fc_samples_Tot'].astype(float), label = 'CE')
-        plt.plot(CW['Fc_samples_Tot'].astype(float), label = 'CW')
-        plt.plot(BN['Fc_samples_Tot'].astype(float), label = 'BN')
-        plt.plot(BS['Fc_samples_Tot'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,14000,19000,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('Fc_samples_Tot',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(312)
-        plt.plot(CE['LE_samples_Tot'].astype(float), label = 'CE')
-        plt.plot(CW['LE_samples_Tot'].astype(float), label = 'CW')
-        plt.plot(BN['LE_samples_Tot'].astype(float), label = 'BN')
-        plt.plot(BS['LE_samples_Tot'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,14000,19000,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        ax.axes.xaxis.set_ticklabels([])
-        plt.ylabel('LE_samples_Tot',fontsize = 12)
-        ax = plt.subplot(313)
-        plt.plot(CE['H_samples_Tot'].astype(float), label = 'CE')
-        plt.plot(CW['H_samples_Tot'].astype(float), label = 'CW')
-        plt.plot(BN['H_samples_Tot'].astype(float), label = 'BN')
-        plt.plot(BS['H_samples_Tot'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,14000,19000,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('H_samples_Tot',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-    
-        fig = plt.figure(4, figsize=(6,8))
-        ax = plt.subplot(211)
-        plt.plot(CE['batt_volt_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['batt_volt_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['batt_volt_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['batt_volt_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,10,15,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12, ncol = 2, loc = 3)
-        plt.ylabel('batt volt [Volt]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(212)
-        plt.plot(CE['door_is_open_Hst'].astype(float), label = 'CE')
-        plt.plot(CW['door_is_open_Hst'].astype(float), label = 'CW')
-        plt.plot(BN['door_is_open_Hst'].astype(float), label = 'BN')
-        plt.plot(BS['door_is_open_Hst'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-0.1,1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('Door Open',fontsize = 12)
-        plt.xticks(rotation = 15)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-    
-        fig = plt.figure(1, figsize=(6,8))
-        ax = plt.subplot(211)
-        plt.plot(CE['CO2_sig_strgth_Min'].astype(float), label = 'CE')
-        plt.plot(CW['CO2_sig_strgth_Min'].astype(float), label = 'CW')
-        plt.plot(BN['CO2_sig_strgth_Min'].astype(float), label = 'BN')
-        plt.plot(BS['CO2_sig_strgth_Min'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,0,1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('Signal Strength, CO2',fontsize = 12)
-        plt.hlines(0.7,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1], linewidth = 2)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(212)
-        plt.plot(CE['H2O_sig_strgth_Min'].astype(float), label = 'CE')
-        plt.plot(CW['H2O_sig_strgth_Min'].astype(float), label = 'CW')
-        plt.plot(BN['H2O_sig_strgth_Min'].astype(float), label = 'BN')
-        plt.plot(BS['H2O_sig_strgth_Min'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,0,1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.hlines(0.7,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1], linewidth = 2)
-        plt.ylabel('Signal Strength, H2O',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-        
-        
-        fig = plt.figure(1, figsize=(6,8))
-        ax = plt.subplot(211)
-        plt.plot(CE['tdr31X_tmpr_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['tdr31X_tmpr_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['tdr31X_tmpr_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['tdr31X_tmpr_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,-10,40,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('Soil Temp, 05cm [degC]',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(212)
-        plt.plot(CE['tdr31X_wc_Avg'].astype(float), label = 'CE')
-        plt.plot(CW['tdr31X_wc_Avg'].astype(float), label = 'CW')
-        plt.plot(BN['tdr31X_wc_Avg'].astype(float), label = 'BN')
-        plt.plot(BS['tdr31X_wc_Avg'].astype(float), label = 'BS')
-        ADLA.format_plot(ax, 12,12,1,5,0,40,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('Soil VWC, 05cm',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-        
-        
-        fig = plt.figure(1, figsize=(6,8))
-        ax = plt.subplot(212)
-        plt.plot(CE['tdr31X_wc_Avg'].astype(float), label = '05cm')
-        plt.plot(CE['profile_tdr31X_wc_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(CE['profile_tdr31X_wc_Avg(2)'].astype(float), label = '30cm')
-        plt.plot(CE['profile_tdr31X_wc_Avg(3)'].astype(float), label = '60cm')
-        plt.plot(CE['profile_tdr31X_wc_Avg(4)'].astype(float), label = '90cm')
-        plt.plot(CE['profile_tdr31X_wc_Avg(5)'].astype(float), label = '120cm')
-        plt.plot(CE['profile_tdr31X_wc_Avg(6)'].astype(float), label = '150cm')
-        ADLA.format_plot(ax, 12,12,1,5,0,50,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 10, ncol = 4)
-        plt.ylabel('Soil VWC Cook East',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(211)
-        plt.plot(CE['tdr31X_tmpr_Avg'].astype(float), label = '05cm')
-        plt.plot(CE['profile_tdr31X_tmpr_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(CE['profile_tdr31X_tmpr_Avg(2)'].astype(float), label = '30cm')
-        plt.plot(CE['profile_tdr31X_tmpr_Avg(3)'].astype(float), label = '60cm')
-        plt.plot(CE['profile_tdr31X_tmpr_Avg(4)'].astype(float), label = '90cm')
-        plt.plot(CE['profile_tdr31X_tmpr_Avg(5)'].astype(float), label = '120cm')
-        plt.plot(CE['profile_tdr31X_tmpr_Avg(6)'].astype(float), label = '150cm')
-        ADLA.format_plot(ax, 12,12,1,5,-10,30,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('Soil Temp, Cook East [degC]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-        
-        fig = plt.figure(1, figsize=(6,8))
-        ax = plt.subplot(212)
-        plt.plot(CW['tdr31X_wc_Avg'].astype(float), label = '05cm')
-        plt.plot(CW['profile_tdr31X_wc_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(CW['profile_tdr31X_wc_Avg(2)'].astype(float), label = '30cm')
-        plt.plot(CW['profile_tdr31X_wc_Avg(3)'].astype(float), label = '60cm')
-        plt.plot(CW['profile_tdr31X_wc_Avg(4)'].astype(float), label = '90cm')
-        plt.plot(CW['profile_tdr31X_wc_Avg(5)'].astype(float), label = '120cm')
-        plt.plot(CW['profile_tdr31X_wc_Avg(6)'].astype(float), label = '150cm')
-        ADLA.format_plot(ax, 12,12,1,5,0,50,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 10, ncol = 4)
-        plt.ylabel('Soil VWC Cook West',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(211)
-        plt.plot(CW['tdr31X_tmpr_Avg'].astype(float), label = '05cm')
-        plt.plot(CW['profile_tdr31X_tmpr_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(CW['profile_tdr31X_tmpr_Avg(2)'].astype(float), label = '30cm')
-        plt.plot(CW['profile_tdr31X_tmpr_Avg(3)'].astype(float), label = '60cm')
-        plt.plot(CW['profile_tdr31X_tmpr_Avg(4)'].astype(float), label = '90cm')
-        plt.plot(CW['profile_tdr31X_tmpr_Avg(5)'].astype(float), label = '120cm')
-        plt.plot(CW['profile_tdr31X_tmpr_Avg(6)'].astype(float), label = '150cm')
-        ADLA.format_plot(ax, 12,12,1,5,-10,30,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('Soil Temp, Cook West [degC]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-        
-        fig = plt.figure(1, figsize=(6,8))
-        ax = plt.subplot(212)
-        plt.plot(BN['tdr31X_wc_Avg'].astype(float), label = '05cm')
-        plt.plot(BN['profile_tdr31X_wc_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(BN['profile_tdr31X_wc_Avg(2)'].astype(float), label = '30cm')
-        ADLA.format_plot(ax, 12,12,1,5,0,50,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('Soil VWC Boyd North',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(211)
-        plt.plot(BN['tdr31X_tmpr_Avg'].astype(float), label = '05cm')
-        plt.plot(BN['profile_tdr31X_tmpr_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(BN['profile_tdr31X_tmpr_Avg(2)'].astype(float), label = '30cm')
-        ADLA.format_plot(ax, 12,12,1,5,-10,30,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('Soil Temp, Boyd North [degC]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-        
-        fig = plt.figure(1, figsize=(6,8))
-        ax = plt.subplot(212)
-        plt.plot(BS['tdr31X_wc_Avg'].astype(float), label = '05cm')
-        plt.plot(BS['profile_tdr31X_wc_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(BS['profile_tdr31X_wc_Avg(2)'].astype(float), label = '30cm')
-        ADLA.format_plot(ax, 12,12,1,5,0,50,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.legend(fontsize = 12)
-        plt.ylabel('Soil VWC Boyd South',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(211)
-        plt.plot(BS['tdr31X_tmpr_Avg'].astype(float), label = '05cm')
-        plt.plot(BS['profile_tdr31X_tmpr_Avg(1)'].astype(float), label = '15cm')
-        plt.plot(BS['profile_tdr31X_tmpr_Avg(2)'].astype(float), label = '30cm')
-        ADLA.format_plot(ax, 12,12,1,5,-10,30,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.xticks(rotation = 15)
-        plt.ylabel('Soil Temp, Boyd South [degC]',fontsize = 12)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
-        
-        qe = np.isnan(CE['Precipitation_Tot'].astype(float))
-        qw = np.isnan(CW['Precipitation_Tot'].astype(float))
-        qn = np.isnan(BN['Precipitation_Tot'].astype(float))
-        qs = np.isnan(BS['Precipitation_Tot'].astype(float))
-    
-        
-        fig = plt.figure(1, figsize=(6,8))  
-        ax = plt.subplot(411)
-        plt.plot(~qe,'k.')
-        ADLA.format_plot(ax, 12,12,1,5,-0.2,1.1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('CookEast',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(412)
-        plt.plot(~qw,'k.')
-        ADLA.format_plot(ax, 12,12,1,5,-0.2,1.1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('CookWest',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(413)
-        plt.plot(~qn,'k.')
-        ADLA.format_plot(ax, 12,12,1,5,-0.2,1.1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('BoydNorth',fontsize = 12)
-        ax.axes.xaxis.set_ticklabels([])
-        ax = plt.subplot(414)
-        plt.plot(~qs,'k.')
-        ADLA.format_plot(ax, 12,12,1,5,-0.2,1.1,CE.index[0]-datetime.timedelta(days=+1),CE.index[-1])
-        plt.ylabel('BoydSouth',fontsize = 12)
-        plt.title('Data Availabile', fontsize = 12)
-        plt.xticks(rotation =15)
-        plt.tight_layout()
-        pdf_pages.savefig( fig )
-        plt.close()
+        # Add category label as a title
+        fig.suptitle(category_label, fontsize=14, fontweight='bold')
+
+        for idx, var in enumerate(vars_to_plot, 1):
+            ax = plt.subplot(len(vars_to_plot), 1, idx)
+            plotted = False  # Track if any data is plotted for this variable
+            
+            for station in data_frames:
+                if var in data_frames[station].columns:
+                    if not data_frames[station][var].empty:
+                        plt.plot(data_frames[station][var].astype(float), label=station)
+                        plotted = True
+                        figure_plotted = True  # Mark figure as having plotted data
+                    else:
+                        print(f"Warning: {var} for {station} is empty.")
+                else:
+                    print(f"Warning: {var} not found in {station}.")
+            
+            if plotted:
+                plt.legend(fontsize=8)
+            else:
+                print(f"Warning: No data plotted for {var} in any station.")
+                invalid_vars.append(var)
+            
+            plt.ylabel(f'{var}', fontsize=12)
+            plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for clarity
+
+        if figure_plotted:  # Save the figure only if at least one variable was plotted
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to fit title
+            pdf_pages.savefig(fig)
+        else:
+            plt.close(fig)  # Close the figure without saving if no data was plotted
+
+    print("Variables not found or empty: ", invalid_vars)
+
     pdf_pages.close()
-    return 
 
 
 
-    
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

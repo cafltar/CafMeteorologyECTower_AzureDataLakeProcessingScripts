@@ -56,7 +56,7 @@ def indx_fill(df_in, frq):
         # Fill in missing times due to tower being down and pad dataframe to midnight of the first and last day
     idx = pd.date_range(df.index[0].floor('D'),df.index[len(df.index)-1].ceil('D'),freq = frq)
     # Reindex the dataframe with the new index and fill the missing values with NaN/blanks
-    df = df.reindex(idx, fill_value=np.NaN)
+    df = df.reindex(idx, fill_value=np.nan)
     return df
 
 def Fast_Read(filenames, hdr, idxfll, specified_dtypes = None):
@@ -488,9 +488,9 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
 
         print('Uploading data')
         
-        AggregatedUploadAzure(fname, access, col,fpath,file_wateryear) # Send info to upload function
-    for f in filenames:
-        os.remove(f)   # Delete downloaded files on local machines as no longer needed
+     #   AggregatedUploadAzure(fname, access, col,fpath,file_wateryear) # Send info to upload function
+    # for f in filenames:
+    #     os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
     del CEN; del CE; return df # Delete variables for clean rerun as needed
 
@@ -609,7 +609,7 @@ def Grade_cs(data,access):
             Good = Grade &~HL
             Good = Good & (Samp_Good_Sonic | Samp_Good_IRGA)
         #data[(col[k]+'_Graded')][~Good] = np.NaN # Create column with nan/blank in the column if data is bad/filtered
-        data.loc[~Good, (col[k]+'_Graded')] = np.NaN
+        data.loc[~Good, (col[k]+'_Graded')] = np.nan
         if k == 0: G = Good; 
         if k >0: G = pd.concat([G,Good],axis=1, sort = False)
         del Good # Delete Good variable for the next round of flux data.
@@ -807,12 +807,13 @@ def Met_QAQC(**kwargs):
 def get_dtypes(dataset_type):
     dtypes = {}
 
-    if dataset_type == "FluxRaw":
+    if dataset_type == "FluxRaw_V40826":
         dtypes = {
             'RECORD':'Int64',
             'Fc_molar':float,
             'Fc_mass':float,
             'Fc_qc_grade':'Int64',
+
             'Fc_samples_Tot':'Int64',
             'LE':float,
             'LE_qc_grade':'Int64',
@@ -1052,7 +1053,91 @@ def get_dtypes(dataset_type):
             'process_time_Max':float,
             'buff_depth_Max':float
         }
-    elif dataset_type == "FluxAggregated":
+    elif dataset_type == "FluxRaw":
+        dtypes = {
+            "TIMESTAMP": str,
+            "RECORD": int,
+            "FC_mass": float,
+            "FC_QC": int,
+            "FC_samples": int,
+            "LE": float,
+            "LE_QC": int,
+            "LE_samples": int,
+            "H": float,
+            "H_QC": int,
+            "H_samples": int,
+            "NETRAD": float,
+            "G": float,
+            "SG": float,
+            "energy_closure": float,
+            "poor_enrg_clsur": str,
+            "Bowen_ratio": float,
+            "TAU": float,
+            "TAU_QC": int,
+            "USTAR": float,
+            "TSTAR": float,
+            "TKE": float,
+            "TA_1_1_1": float,
+            "TA_1_1_2": float,
+            "RH_1_1_2": float,
+            "T_DP_1_1_2": float,
+            "e": float,
+            "e_sat": float,
+            "PA": float,
+            "VPD": float,
+            "Ux": float,
+            "Ux_SIGMA": float,
+            "Uy": float,
+            "Uy_SIGMA": float,
+            "Uz": float,
+            "Uz_SIGMA": float,
+            "T_SONIC": float,
+            "T_SONIC_SIGMA": float,
+            "sonic_azimuth": float,
+            "WS": float,
+            "WS_RSLT": float,
+            "WD_SONIC": float,
+            "WD_SIGMA": float,
+            "WD": float,
+            "WS_MAX": float,
+            "CO2_density": float,
+            "CO2_density_SIGMA": float,
+            "H2O_density": float,
+            "H2O_density_SIGMA": float,
+            "CO2_sig_strgth_Min": float,
+            "H2O_sig_strgth_Min": float,
+            "P": float,
+            "ALB": float,
+            "SW_IN": float,
+            "SW_OUT": float,
+            "LW_IN": float,
+            "LW_OUT": float,
+            "T_nr_in": float,
+            "T_nr_out": float,
+            "PPFD_IN": float,
+            "sun_azimuth": float,
+            "sun_elevation": float,
+            "hour_angle": float,
+            "sun_declination": float,
+            "air_mass_coeff": float,
+            "daytime": float,
+            "TS_1_1_1": float,
+            "SWC_1_1_1": float,
+            "TS_TDR31X_1_1_1": float,
+            "tdr31x_E_1_1_1": float,
+            "tdr31x_ec_1_1_1": float,
+            "tdr31x_ec_pore_1_1_1": float,
+            "G_plate_1_1_1": float,
+            "FETCH_MAX": float,
+            "FETCH_90": float,
+            "FETCH_55": float,
+            "FETCH_40": float,
+            "UPWND_DIST_INTRST": float,
+            "FP_DIST_INTRST": float,
+            "FP_EQUATION": str
+        }
+        
+    elif dataset_type == "FluxAggregated_V40826":
         dtypes = {
             'RECORD':'Int64',
             'Fc_molar':float,
@@ -1349,6 +1434,11 @@ def get_dtypes(dataset_type):
             'e_s_Change':object,
             'e_s_Day_Change':object,
             'e_s_Filtered':float
+        }
+
+    elif dataset_type == "FluxAggregated":
+        dtypes = {
+
         }
 
     elif dataset_type == "MetRaw":

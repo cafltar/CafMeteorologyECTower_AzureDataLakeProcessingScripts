@@ -33,7 +33,7 @@ DataTables = [flux]
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
 
-Sites = ['CookEast','CookWest','BoydNorth', 'BoydSouth'] # Name of the sites wanted; can be as many as want but must be within square brackets
+Sites = ['CookEast','CookWest'] # Name of the sites wanted; can be as many as want but must be within square brackets
 
 #Sites = ['CookEast','CookWest'] # Name of the sites wanted; can be as many as want but must be within square brackets
 #Sites = ['CookWest','BoydNorth', 'BoydSouth']
@@ -83,7 +83,7 @@ for dataTable in DataTables:
         # Can add the save and date options if want them to be different than the default
         
         #TODO 2024-08-09: Comment/remove this before deploying code
-        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True, startDate="2024-08-07", endDate="2024-08-09")
+        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=False, startDate="2024-11-13", endDate="2024-11-14")
         
         #TODO 2024-08-09: Remove comments before deploying code
         #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
