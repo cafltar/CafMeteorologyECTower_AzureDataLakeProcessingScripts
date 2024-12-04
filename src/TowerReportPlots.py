@@ -6,10 +6,9 @@ Created on Thu Jul  9 15:55:41 2020
 @author: Eddie Steiner
 """
 
-
-
 import glob
 import os
+import pathlib
 import matplotlib.pyplot as plt
 import datetime
 import numpy as np
@@ -64,7 +63,9 @@ def TowerReport(pathToAggregatedFiles, startdate=None, enddate=None):
     s = str(data_frames[valid_station].index[-1] - datetime.timedelta(days=+7))[0:10].replace('-', '')
     e = str(data_frames[valid_station].index[-1])[0:10].replace('-', '')
     
-    pdf_pages = PdfPages(f'CAFLTARTowerReport{s}_{e}.pdf')
+    path_to_drive = pathlib.Path('G:\Shared drives\CafMeteorologyECTower\Documents\TowerReports')
+    path_to_file = path_to_drive / f'CAFLTARTowerReport{s}_{e}.pdf'
+    pdf_pages = PdfPages(str(path_to_file))
     
     # Plotting for each variable group
 
@@ -124,38 +125,3 @@ def TowerReport(pathToAggregatedFiles, startdate=None, enddate=None):
     print("Variables not found or empty: ", invalid_vars)
 
     pdf_pages.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

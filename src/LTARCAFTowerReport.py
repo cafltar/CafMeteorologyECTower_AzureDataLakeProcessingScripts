@@ -24,10 +24,7 @@ import pathlib
 flux = {'col': 'Flux', 'Time': '30min'}
 met = {'col': 'Met', 'Time': '15min'}
 
-#TODO 2024-08-09: Remove comments before deploying code
 #DataTables = [flux, met]
-
-#TODO 2024-08-09: Comment/remove this before deploying code
 DataTables = [flux]
 
 #*********************************************************************
@@ -82,11 +79,7 @@ for dataTable in DataTables:
         # Calls the function that access the Azure data lake using the options given in the first section. 
         # Can add the save and date options if want them to be different than the default
         
-        #TODO 2024-08-09: Comment/remove this before deploying code
-        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=False, startDate="2024-11-13", endDate="2024-11-14")
-        
-        #TODO 2024-08-09: Remove comments before deploying code
-        #df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=True)
+        df = ADLA.AccessAzure(Sites[k], col, Time, access, CEF, QC=False)
         
 
     if col =='Flux':

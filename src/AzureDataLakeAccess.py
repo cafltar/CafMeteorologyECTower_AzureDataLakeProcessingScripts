@@ -446,8 +446,7 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
     print('Downloading files')
     # Call function to update the Azure data
 
-    #TODO 2024-08-09: Remove comments before deploying code
-    # download_data_from_datalake(access, start_date, col, Sites, end_date)
+    download_data_from_datalake(access, start_date, col, Sites, end_date)
 
     print('Reading '+ Sites)
     if not pd.isna(access[col]['LOCAL_DIRECT']):
@@ -488,9 +487,9 @@ def AccessAzure(Sites, col, Time,access,CEF,save=True, QC = True,startDate:str=N
 
         print('Uploading data')
         
-     #   AggregatedUploadAzure(fname, access, col,fpath,file_wateryear) # Send info to upload function
-    # for f in filenames:
-    #     os.remove(f)   # Delete downloaded files on local machines as no longer needed
+        AggregatedUploadAzure(fname, access, col,fpath,file_wateryear) # Send info to upload function
+    for f in filenames:
+        os.remove(f)   # Delete downloaded files on local machines as no longer needed
     df=CE
     del CEN; del CE; return df # Delete variables for clean rerun as needed
 
@@ -1078,11 +1077,21 @@ def get_dtypes(dataset_type):
             "TSTAR": float,
             "TKE": float,
             "TA_1_1_1": float,
+            "RH_1_1_1": float,
+            "T_DP_1_1_1": float,
+            "e_amb": float,
+            "e_sat_amb": float,
             "TA_1_1_2": float,
             "RH_1_1_2": float,
             "T_DP_1_1_2": float,
             "e": float,
             "e_sat": float,
+            "TA_1_1_3": float,
+            "RH_1_1_3": float,
+            "T_DP_1_1_3": float,
+            "e_probe": float,
+            "e_sat_probe": float,
+            "H2O_density_probe": float,
             "PA": float,
             "VPD": float,
             "Ux": float,
@@ -1128,6 +1137,8 @@ def get_dtypes(dataset_type):
             "tdr31x_ec_1_1_1": float,
             "tdr31x_ec_pore_1_1_1": float,
             "G_plate_1_1_1": float,
+            "G_1_1_1": float,
+            "SG_1_1_1": float,
             "FETCH_MAX": float,
             "FETCH_90": float,
             "FETCH_55": float,
@@ -1441,7 +1452,7 @@ def get_dtypes(dataset_type):
 
         }
 
-    elif dataset_type == "MetRaw":
+    elif dataset_type == "MetRaw_V40826":
         dtypes = {
             'RECORD':float,
             'amb_tmpr_Avg':float,
@@ -1496,6 +1507,64 @@ def get_dtypes(dataset_type):
             'profile_tdr31X_poreEC_Avg(6)':float,
             'shf_plate_avg':float,
             'SHFP_1_SENS':float
+        }
+
+    elif dataset_type == "MetRaw":
+        dtypes = {
+            'RECORD':float,
+            'amb_tmpr_Avg':float,
+            'rslt_wnd_spd':float,
+            'wnd_dir_compass':float,
+            'RH_Avg':float,
+            'Precipitation':float,
+            'press_amb_Avg':float,
+            'PAR_density':float,
+            'ShortWaveIn':float,
+            'LongWaveIn':float,
+            'batt_volt':float,
+            'panel_tmpr':float,
+            'std_wnd_dir':float,
+            'VPD_air':float,
+            'Rn':float,
+            'e_sat':float,
+            'e':float,
+            'tdr31X_wc_Avg':float,
+            'tdr31X_tmpr_Avg':float,
+            'tdr31X_E_Avg':float,
+            'tdr31X_bulkEC_Avg':float,
+            'tdr31X_poreEC_Avg':float,
+            'Tsoil_Avg':float,
+            'profile_tdr31X_wc_Avg(1)':float,
+            'profile_tdr31X_wc_Avg(2)':float,
+            'profile_tdr31X_wc_Avg(3)':float,
+            'profile_tdr31X_wc_Avg(4)':float,
+            'profile_tdr31X_wc_Avg(5)':float,
+            'profile_tdr31X_wc_Avg(6)':float,
+            'profile_tdr31X_tmpr_Avg(1)':float,
+            'profile_tdr31X_tmpr_Avg(2)':float,
+            'profile_tdr31X_tmpr_Avg(3)':float,
+            'profile_tdr31X_tmpr_Avg(4)':float,
+            'profile_tdr31X_tmpr_Avg(5)':float,
+            'profile_tdr31X_tmpr_Avg(6)':float,
+            'profile_tdr31X_E_Avg(1)':float,
+            'profile_tdr31X_E_Avg(2)':float,
+            'profile_tdr31X_E_Avg(3)':float,
+            'profile_tdr31X_E_Avg(4)':float,
+            'profile_tdr31X_E_Avg(5)':float,
+            'profile_tdr31X_E_Avg(6)':float,
+            'profile_tdr31X_bulkEC_Avg(1)':float,
+            'profile_tdr31X_bulkEC_Avg(2)':float,
+            'profile_tdr31X_bulkEC_Avg(3)':float,
+            'profile_tdr31X_bulkEC_Avg(4)':float,
+            'profile_tdr31X_bulkEC_Avg(5)':float,
+            'profile_tdr31X_bulkEC_Avg(6)':float,
+            'profile_tdr31X_poreEC_Avg(1)':float,
+            'profile_tdr31X_poreEC_Avg(2)':float,
+            'profile_tdr31X_poreEC_Avg(3)':float,
+            'profile_tdr31X_poreEC_Avg(4)':float,
+            'profile_tdr31X_poreEC_Avg(5)':float,
+            'profile_tdr31X_poreEC_Avg(6)':float,
+            'shf_plate_avg':float
         }
 
     elif dataset_type == "MetAggregated":
