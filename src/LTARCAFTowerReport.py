@@ -25,7 +25,7 @@ flux = {'col': 'Flux', 'Time': '30min'}
 met = {'col': 'Met', 'Time': '15min'}
 
 #DataTables = [flux, met]
-DataTables = [flux]
+DataTables = [flux, met]
 
 #*********************************************************************
 save = True # If want to save the aggregated file or not; default is True
