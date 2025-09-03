@@ -16,7 +16,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 import AzureDataLakeAccess as ADLA
 
 def TowerReport(pathToAggregatedFiles, startdate=None, enddate=None):
-    stations = ['CookEast', 'CookWest', 'BoydNorth', 'BoydSouth']
+    #stations = ['CookEast', 'CookWest', 'BoydNorth', 'BoydSouth']
+    stations = ['CookEast', 'CookWest']
     data_frames = {}
     missing_stations = []
     invalid_vars = []
